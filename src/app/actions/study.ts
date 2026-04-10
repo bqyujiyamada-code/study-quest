@@ -3,7 +3,6 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
 
-// AWSの設定（環境変数は Vercel 等の管理画面で設定してください）
 const client = new DynamoDBClient({
   region: "ap-northeast-1",
   credentials: {
@@ -15,31 +14,31 @@ const client = new DynamoDBClient({
 const docClient = DynamoDBDocumentClient.from(client);
 
 /**
- * 1. ユーザーの現在のステータスを取得する
+ * ユーザーの現在のステータスを取得
  */
 export async function getUserStats(userId: string) {
   try {
     const command = new GetCommand({
-      TableName: "UserStats", // 事前にDynamoDBでこのテーブルを作成してください
+      TableName: "UserStats",
       Key: { userId },
     });
     const response = await docClient.send(command);
     
-    // データがない場合は初期値を返す
     return response.Item || { 
       totalMinutes: 0, 
       totalPoints: 0, 
       totalMoney: 0, 
-      combo: 0 
+      combo: 0,
+      lastDate: "" // コンボ判定用の最終保存日
     };
   } catch (error) {
     console.error("DynamoDB Get Error:", error);
-    return { totalMinutes: 0, totalPoints: 0, totalMoney: 0, combo: 0 };
+    return { totalMinutes: 0, totalPoints: 0, totalMoney: 0, combo: 0, lastDate: "" };
   }
 }
 
 /**
- * 2. ユーザーステータスを更新（保存）する
+ * ユーザーステータス（累計データ）を更新
  */
 export async function saveStudyLogAndStats(data: {
   userId: string;
@@ -49,10 +48,16 @@ export async function saveStudyLogAndStats(data: {
   combo: number;
 }) {
   try {
+    // 今日を「YYYY-MM-DD」形式で取得
+    const today = new Date().toLocaleDateString("ja-JP", {
+      year: "numeric", month: "2-digit", day: "2-digit"
+    }).replaceAll("/", "-");
+
     const command = new PutCommand({
       TableName: "UserStats",
       Item: {
         ...data,
+        lastDate: today,
         lastUpdated: new Date().toISOString(),
       },
     });
@@ -65,7 +70,7 @@ export async function saveStudyLogAndStats(data: {
 }
 
 /**
- * 3. 勉強ログを保存する (既存の処理)
+ * 個別の勉強ログ保存とポイント・コンボ計算
  */
 export async function saveStudyLog(data: {
   userId: string;
@@ -76,18 +81,48 @@ export async function saveStudyLog(data: {
   memo: string;
 }) {
   try {
-    // ここで StudyLog テーブルに保存する処理を記述
-    // ポイント計算ロジック（例: 1分 = 1pt + コンボボーナスなど）
-    const basePoints = data.duration;
-    const comboBonus = 5; // 仮のボーナス
-    const totalPoints = basePoints + comboBonus;
+    // 1. 現在のステータスを取得してコンボ判定
+    const stats = await getUserStats(data.userId);
+    const today = new Date();
+    const todayStr = today.toLocaleDateString("ja-JP", { year: "numeric", month: "2-digit", day: "2-digit" }).replaceAll("/", "-");
+    
+    let nextCombo = 1;
+    
+    if (stats.lastDate) {
+      const lastDate = new Date(stats.lastDate);
+      const diffTime = today.getTime() - lastDate.getTime();
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
-    // ※本来はここでDynamoDBのStudyLogテーブルにPutします
+      if (stats.lastDate === todayStr) {
+        // 今日すでに一度保存しているならコンボは維持
+        nextCombo = stats.combo;
+      } else if (diffDays === 1) {
+        // 昨日から連続しているならコンボ+1
+        nextCombo = stats.combo + 1;
+      } else {
+        // 1日以上空いたらリセットして1から
+        nextCombo = 1;
+      }
+    }
+
+    // 2. ポイント計算 (1分 = 1pt)
+    let points = data.duration;
+    let isBonus = false;
+
+    // 3. 5の倍数の日なら1.25倍ボーナス
+    if (nextCombo > 0 && nextCombo % 5 === 0) {
+      points = Math.floor(points * 1.25);
+      isBonus = true;
+    }
+
+    // ※本来はここで「StudyLogs」という別テーブルにも明細を保存するのがエンジニア的ですが、
+    // まずはフロントへ計算結果を返します
     
     return { 
       success: true, 
-      points: totalPoints, 
-      combo: 1 // 本来は前回のログを見て計算
+      points: points, 
+      isBonus: isBonus,
+      newCombo: nextCombo 
     };
   } catch (error) {
     console.error("Save Study Log Error:", error);
