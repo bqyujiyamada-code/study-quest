@@ -5,7 +5,6 @@ import { saveStudyLog } from "@/app/actions/study";
 
 type Mode = "SELECT" | "TIMER" | "CONFIRM" | "RESULT";
 
-// デザイン定義をCSS変数で扱えるように整理
 const SUBJECTS = [
   { name: "算数", icon: "📐", color: "#4CC9F0", shadow: "#3A86FF" },
   { name: "国語", icon: "📖", color: "#FF4D6D", shadow: "#C9184A" },
@@ -22,6 +21,15 @@ export default function Home() {
   const [elapsed, setElapsed] = useState(0);
   const [memo, setMemo] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  
+  // ステータス関連（本来はDBから取得しますが、まずは初期値を設定）
+  const [userStats, setUserStats] = useState({
+    level: 1,
+    totalPoints: 1250, // 今月のポイント例
+    combo: 3,          // 連続日数例
+    rankName: "見習い探検家"
+  });
+  
   const [result, setResult] = useState<{points: number, combo: number} | null>(null);
 
   useEffect(() => {
@@ -58,6 +66,12 @@ export default function Home() {
     });
     if (res.success) {
       setResult({ points: res.points!, combo: res.combo! });
+      // 保存成功時にステータスを更新（仮）
+      setUserStats(prev => ({
+        ...prev,
+        totalPoints: prev.totalPoints + (res.points || 0),
+        combo: res.combo || prev.combo
+      }));
       setMode("RESULT");
     }
     setIsSaving(false);
@@ -65,30 +79,45 @@ export default function Home() {
 
   return (
     <main className="main-container">
-      {/* キラキラ背景粒子 */}
       <div className="sparkles">
-        {[...Array(12)].map((_, i) => (
-          <div key={i} className="sparkle">✨</div>
+        {[...Array(15)].map((_, i) => (
+          <div key={i} className="sparkle" style={{
+            left: `${Math.random() * 100}%`,
+            top: `${Math.random() * 100}%`,
+            animationDelay: `${Math.random() * 5}s`
+          } as any}>✨</div>
         ))}
       </div>
 
       <div className="content-wrapper">
-        {/* レベルヘッダー */}
-        <div className="level-header">
-          <div className="level-badge">5</div>
-          <div className="level-info">
-            <span className="level-title">見習い探検家</span>
-            <div className="exp-bar-bg">
-              <div className="exp-bar-fill" style={{ width: '45%' }}></div>
+        {/* レベル・ポイント・コンボ 統合ヘッダー */}
+        <div className="status-card">
+          <div className="status-top">
+            <div className="level-badge">{userStats.level}</div>
+            <div className="rank-info">
+              <div className="rank-name">{userStats.rankName}</div>
+              <div className="exp-bar-bg">
+                <div className="exp-bar-fill" style={{ width: '45%' }}></div>
+              </div>
+            </div>
+          </div>
+          <div className="status-bottom">
+            <div className="stat-item">
+              <span className="stat-label">今月のポイント</span>
+              <span className="stat-value">{userStats.totalPoints} <small>pt</small></span>
+            </div>
+            <div className="stat-divider"></div>
+            <div className="stat-item">
+              <span className="stat-label">コンボ</span>
+              <span className="stat-value">🔥 {userStats.combo} <small>日</small></span>
             </div>
           </div>
         </div>
 
-        {/* メインカード */}
         <div className="game-card">
           {mode === "SELECT" && (
             <div className="fade-in">
-              <h1 className="title">冒険の行き先は？</h1>
+              <h1 className="title">次はなにをやる？</h1>
               <div className="subject-grid">
                 {SUBJECTS.map((s) => (
                   <button
@@ -103,9 +132,11 @@ export default function Home() {
                       localStorage.setItem("currentStudy", JSON.stringify({ subject: s.name, startTime: now }));
                     }}
                   >
-                    <span className="icon">{s.icon}</span>
-                    <span className="name">{s.name}</span>
-                    <div className="highlight"></div>
+                    <div className="puni-face">
+                      <span className="icon">{s.icon}</span>
+                      <span className="name">{s.name}</span>
+                      <div className="puni-highlight"></div>
+                    </div>
                   </button>
                 ))}
               </div>
@@ -114,32 +145,35 @@ export default function Home() {
 
           {mode === "TIMER" && (
             <div className="timer-screen fade-in">
-              <div className="status-badge">QUESTING...</div>
+              <div className="status-badge">冒険の記録ちゅう...</div>
               <h2 className="current-subject">{subject}</h2>
               <div className="timer-circle">
+                <div className="timer-glow"></div>
                 <span className="time-val">{elapsed}</span>
-                <span className="time-unit">min</span>
+                <span className="time-unit">分</span>
               </div>
-              <button className="puni-button-rect" onClick={() => setMode("CONFIRM")}>
-                クエスト完了！ 🏁
+              <button className="puni-button-rect cancel" onClick={() => setMode("CONFIRM")}>
+                おわりにする 🏁
               </button>
             </div>
           )}
 
           {mode === "CONFIRM" && (
             <div className="confirm-screen fade-in">
-              <h2 className="title">報告を書こう！ 📖</h2>
+              <h2 className="title">報告書をかこう 📝</h2>
               <div className="time-editor">
-                <button onClick={() => setElapsed(Math.max(0, elapsed - 5))}>-</button>
-                <div className="time-display">{elapsed}</div>
+                <button onClick={() => setElapsed(Math.max(0, elapsed - 5))}>−</button>
+                <div className="time-display">{elapsed}<small>分</small></div>
                 <button onClick={() => setElapsed(elapsed + 5)}>+</button>
               </div>
-              <textarea 
-                value={memo}
-                onChange={(e) => setMemo(e.target.value)}
-                placeholder="勉強の内容をメモしよう！"
-                className="memo-area"
-              />
+              <div className="input-group">
+                <textarea 
+                  value={memo}
+                  onChange={(e) => setMemo(e.target.value)}
+                  placeholder="どんなことをがんばったかな？"
+                  className="memo-area"
+                />
+              </div>
               <button className="puni-button-rect save" onClick={handleSave} disabled={isSaving}>
                 {isSaving ? "セーブ中..." : "セーブして完了！ ✨"}
               </button>
@@ -149,14 +183,13 @@ export default function Home() {
           {mode === "RESULT" && result && (
             <div className="result-screen fade-in">
               <div className="crown">👑</div>
-              <h2 className="clear-text">CLEAR!</h2>
+              <h2 className="clear-text">QUEST CLEAR!</h2>
               <div className="reward-box">
-                <span className="reward-label">STUDY POINTS</span>
+                <span className="reward-label">もらったポイント</span>
                 <span className="reward-val">+{result.points}</span>
               </div>
-              <div className="combo-badge">🔥 {result.combo}日連続！</div>
               <button className="puni-button-rect next" onClick={() => setMode("SELECT")}>
-                次へすすむ 🚀
+                次のぼうけんへ 🚀
               </button>
             </div>
           )}
@@ -167,156 +200,166 @@ export default function Home() {
         .main-container {
           min-height: 100vh;
           background: radial-gradient(circle at top left, #98FFD9 0%, #F0FFF9 100%);
-          padding: 20px;
+          padding: 20px 15px;
           font-family: 'Hiragino Maru Gothic ProN', 'Meiryo', sans-serif;
           overflow-x: hidden;
+          box-sizing: border-box;
         }
         .content-wrapper {
           max-width: 400px;
           margin: 0 auto;
         }
-        .level-header {
+        /* 統合ヘッダーのデザイン */
+        .status-card {
           background: white;
-          padding: 15px;
-          border-radius: 25px;
+          border-radius: 30px;
           border: 4px solid #98FFD9;
+          margin-bottom: 20px;
+          box-shadow: 0 10px 0 #98FFD9;
+          overflow: hidden;
+        }
+        .status-top {
+          padding: 15px;
           display: flex;
           align-items: center;
           gap: 15px;
-          margin-bottom: 25px;
-          box-shadow: 0 8px 0 #98FFD9;
+          background: rgba(152, 255, 217, 0.1);
+          border-bottom: 2px dashed #98FFD9;
         }
         .level-badge {
-          width: 50px;
-          height: 50px;
+          width: 45px;
+          height: 45px;
           background: linear-gradient(135deg, #FFD93D, #FF9F1A);
-          border-radius: 50%;
+          border-radius: 15px;
           border: 3px solid white;
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 24px;
+          font-size: 22px;
           font-weight: 900;
           color: white;
           box-shadow: 0 4px 0 rgba(0,0,0,0.1);
         }
-        .level-title {
-          font-size: 12px;
-          font-weight: 900;
-          color: #8ABBA6;
-        }
+        .rank-name { font-size: 14px; font-weight: 900; color: #2D5A47; }
         .exp-bar-bg {
-          height: 15px;
+          width: 150px;
+          height: 10px;
           background: #E6FFF4;
-          border-radius: 10px;
-          border: 2px solid #98FFD9;
-          margin-top: 5px;
+          border-radius: 5px;
+          margin-top: 4px;
           overflow: hidden;
+          border: 1px solid #98FFD9;
         }
-        .exp-bar-fill {
-          height: 100%;
-          background: linear-gradient(to right, #66ED9A, #00C951);
+        .exp-bar-fill { height: 100%; background: #66ED9A; }
+        .status-bottom {
+          display: flex;
+          padding: 10px 15px;
+          justify-content: space-around;
+          align-items: center;
         }
+        .stat-item { text-align: center; }
+        .stat-label { display: block; font-size: 10px; color: #8ABBA6; font-weight: 900; }
+        .stat-value { font-size: 18px; font-weight: 900; color: #2D5A47; }
+        .stat-value small { font-size: 10px; }
+        .stat-divider { width: 2px; height: 20px; background: #E6FFF4; }
+
+        /* カードとボタン */
         .game-card {
-          background: rgba(255, 255, 255, 0.9);
+          background: rgba(255, 255, 255, 0.95);
           border-radius: 40px;
           border: 4px solid white;
-          padding: 30px 20px;
-          box-shadow: 0 20px 40px rgba(152, 255, 217, 0.4);
-        }
-        .title {
-          font-size: 24px;
-          font-weight: 900;
-          text-align: center;
-          color: #2D5A47;
-          margin-bottom: 25px;
+          padding: 25px 20px;
+          box-shadow: 0 15px 35px rgba(152, 255, 217, 0.3);
+          box-sizing: border-box;
         }
         .subject-grid {
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 15px;
+          gap: 12px;
         }
         .puni-button {
-          position: relative;
-          height: 130px;
+          height: 120px;
           border: none;
           background: var(--btn-shadow);
-          border-radius: 30px;
+          border-radius: 25px;
           cursor: pointer;
           padding: 0;
-          transition: transform 0.1s;
+          position: relative;
         }
-        .puni-button .name {
+        .puni-face {
           position: absolute;
-          inset: 0 0 8px 0;
+          inset: 0 0 6px 0;
           background: var(--btn-color);
-          border-radius: 30px;
+          border-radius: 25px;
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: flex-end;
-          padding-bottom: 15px;
-          color: white;
-          font-weight: 900;
-          font-size: 18px;
-          border-top: 4px solid rgba(255,255,255,0.4);
+          padding-bottom: 12px;
+          border-top: 3px solid rgba(255,255,255,0.4);
           transition: transform 0.1s;
         }
-        .puni-button .icon {
-          position: absolute;
-          top: 20px;
-          left: 50%;
-          transform: translateX(-50%);
-          font-size: 45px;
-          z-index: 2;
-        }
-        .puni-button:active {
-          transform: scale(0.95);
-        }
-        .puni-button:active .name {
-          transform: translateY(4px);
-        }
+        .puni-button:active .puni-face { transform: translateY(4px); }
+        .puni-button .icon { font-size: 40px; margin-bottom: 5px; }
+        .puni-button .name { color: white; font-weight: 900; font-size: 16px; }
+        
         .puni-button-rect {
           width: 100%;
-          height: 70px;
+          height: 65px;
           border: none;
-          background: #E66B74;
-          border-radius: 35px;
-          position: relative;
+          border-radius: 30px;
           font-size: 20px;
           font-weight: 900;
           color: white;
-          box-shadow: 0 8px 0 #C9184A;
           cursor: pointer;
+          transition: all 0.1s;
+          box-sizing: border-box;
         }
-        .puni-button-rect:active {
-          transform: translateY(4px);
-          box-shadow: 0 4px 0 #C9184A;
+        .save { background: #00C951; box-shadow: 0 6px 0 #00A644; }
+        .cancel { background: #FF8B94; box-shadow: 0 6px 0 #E66B74; }
+        .next { background: #4CC9F0; box-shadow: 0 6px 0 #3A86FF; }
+        .puni-button-rect:active { transform: translateY(4px); box-shadow: none; }
+
+        /* 入力欄の修正（はみ出し防止） */
+        .input-group { width: 100%; box-sizing: border-box; }
+        .memo-area {
+          width: 100%;
+          box-sizing: border-box;
+          padding: 15px;
+          border-radius: 20px;
+          border: 3px solid #98FFD9;
+          font-size: 16px;
+          height: 100px;
+          margin: 15px 0;
+          background: #F0FFF9;
+          font-family: inherit;
+          resize: none;
         }
+
         .timer-circle {
-          width: 200px;
-          height: 200px;
+          width: 180px;
+          height: 180px;
           background: white;
-          margin: 30px auto;
+          margin: 25px auto;
           border-radius: 50%;
-          border: 8px solid #98FFD9;
+          border: 6px solid #98FFD9;
           display: flex;
           align-items: center;
           justify-content: center;
           flex-direction: column;
-          box-shadow: 0 10px 30px rgba(152, 255, 217, 0.5);
+          position: relative;
+          box-shadow: inset 0 0 20px rgba(152, 255, 217, 0.2);
         }
-        .time-val { font-size: 60px; font-weight: 900; color: #2D5A47; line-height: 1; }
-        .time-unit { font-size: 20px; font-weight: 900; color: #8ABBA6; }
+        .time-val { font-size: 50px; font-weight: 900; color: #2D5A47; }
+        .time-display { font-size: 45px; font-weight: 900; color: #2D5A47; }
         .time-editor {
           display: flex;
           align-items: center;
-          justify-content: center;
-          gap: 20px;
+          justify-content: space-between;
           background: #F0FFF9;
-          padding: 20px;
-          border-radius: 30px;
-          border: 3px solid #98FFD9;
+          padding: 15px;
+          border-radius: 25px;
+          border: 2px solid #98FFD9;
         }
         .time-editor button {
           width: 50px;
@@ -329,33 +372,21 @@ export default function Home() {
           color: #2D5A47;
           box-shadow: 0 4px 0 #98FFD9;
         }
-        .time-display { font-size: 45px; font-weight: 900; color: #2D5A47; }
-        .memo-area {
-          width: 100%;
-          margin-top: 20px;
-          padding: 20px;
-          border-radius: 20px;
-          border: 3px solid #98FFD9;
-          font-size: 16px;
-          height: 120px;
-          margin-bottom: 20px;
-        }
-        .save { background: #00C951; box-shadow: 0 8px 0 #00A644; }
         .reward-box {
           background: #FFF9CC;
-          padding: 40px 20px;
-          border-radius: 40px;
+          padding: 30px;
+          border-radius: 35px;
           border: 4px solid #FFD93D;
-          text-align: center;
           margin-bottom: 20px;
         }
-        .reward-val { display: block; font-size: 60px; font-weight: 900; color: #B38F00; }
-        .reward-label { font-size: 14px; font-weight: 900; color: #B38F00; opacity: 0.6; }
-        .fade-in { animation: fadeIn 0.5s ease-out; }
+        .reward-val { display: block; font-size: 55px; font-weight: 900; color: #B38F00; }
+        .reward-label { font-size: 12px; font-weight: 900; color: #B38F00; opacity: 0.6; }
+
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-in { animation: fadeIn 0.4s ease-out; }
         .sparkles { position: absolute; inset: 0; pointer-events: none; }
-        .sparkle { position: absolute; font-size: 20px; animation: bounce 3s infinite; }
-        @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-20px); } }
+        .sparkle { position: absolute; font-size: 18px; animation: bounce 4s infinite ease-in-out; }
+        @keyframes bounce { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-30px) scale(1.2); } }
       `}</style>
     </main>
   );
