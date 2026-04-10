@@ -10,7 +10,7 @@ const SUBJECTS = [
   { name: "国語", icon: "📖", color: "#FF4D6D", shadow: "#C9184A" },
   { name: "理科", icon: "🧪", color: "#72EFDD", shadow: "#208B81" },
   { name: "社会", icon: "🗺️", color: "#FFB703", shadow: "#FB8500" },
-  { name: "論理", icon: "🧩", color: "#B5179E", shadow: "#7209B7" },
+  { name: "適正", icon: "🧩", color: "#B5179E", shadow: "#7209B7" },
   { name: "作文", icon: "✍️", color: "#FF85A1", shadow: "#FF477E" },
 ];
 
