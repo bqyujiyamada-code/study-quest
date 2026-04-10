@@ -1,7 +1,12 @@
 "use server";
 
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
+import { 
+  DynamoDBDocumentClient, 
+  GetCommand, 
+  PutCommand, 
+  ScanCommand 
+} from "@aws-sdk/lib-dynamodb";
 
 const client = new DynamoDBClient({
   region: "ap-northeast-1",
@@ -29,7 +34,7 @@ export async function getUserStats(userId: string) {
       totalPoints: 0, 
       totalMoney: 0, 
       combo: 0,
-      lastDate: "" // コンボ判定用の最終保存日
+      lastDate: "" 
     };
   } catch (error) {
     console.error("DynamoDB Get Error:", error);
@@ -48,7 +53,6 @@ export async function saveStudyLogAndStats(data: {
   combo: number;
 }) {
   try {
-    // 今日を「YYYY-MM-DD」形式で取得
     const today = new Date().toLocaleDateString("ja-JP", {
       year: "numeric", month: "2-digit", day: "2-digit"
     }).replaceAll("/", "-");
@@ -81,10 +85,8 @@ export async function saveStudyLog(data: {
   memo: string;
 }) {
   try {
-    // 1. 現在のステータスを取得してコンボ判定
     const stats = await getUserStats(data.userId);
     const today = new Date();
-    // 日本時間のYYYY-MM-DDを生成
     const todayStr = today.toLocaleDateString("ja-JP", { 
       year: "numeric", 
       month: "2-digit", 
@@ -99,34 +101,30 @@ export async function saveStudyLog(data: {
       const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
       if (stats.lastDate === todayStr) {
-        // 今日すでに一度保存しているならコンボは維持
         nextCombo = stats.combo;
       } else if (diffDays === 1) {
-        // 昨日から連続しているならコンボ+1
         nextCombo = stats.combo + 1;
       } else {
-        // 1日以上空いたらリセットして1から
         nextCombo = 1;
       }
     }
 
-    // 2. ポイント計算 (1分 = 1pt)
     let points = data.duration;
     let isBonus = false;
 
-    // 3. 5の倍数の日なら1.25倍ボーナス
     if (nextCombo > 0 && nextCombo % 5 === 0) {
       points = Math.floor(points * 1.25);
       isBonus = true;
     }
 
-    // 4. StudyQuestLogsテーブルに明細を保存
     const timestamp = new Date().toISOString();
+
+    // 1. StudyQuestLogsテーブルに明細を保存 (status: unpaid を追加)
     await docClient.send(new PutCommand({
       TableName: "StudyQuestLogs",
       Item: {
         userId: data.userId,
-        timestamp: timestamp, // ソートキーとして使用
+        timestamp: timestamp,
         date: todayStr,
         subject: data.subject,
         duration: data.duration,
@@ -135,6 +133,7 @@ export async function saveStudyLog(data: {
         memo: data.memo,
         points: points,
         isBonus: isBonus,
+        status: "unpaid", // 未精算フラグ
         createdAt: timestamp
       }
     }));
@@ -147,6 +146,62 @@ export async function saveStudyLog(data: {
     };
   } catch (error) {
     console.error("Save Study Log Error:", error);
+    return { success: false };
+  }
+}
+
+/**
+ * 未精算の勉強ログをすべて取得する（パパ管理画面用）
+ */
+export async function getUnpaidLogs(userId: string) {
+  try {
+    const command = new ScanCommand({
+      TableName: "StudyQuestLogs",
+      FilterExpression: "userId = :uid AND #st = :status",
+      ExpressionAttributeNames: { "#st": "status" },
+      ExpressionAttributeValues: { ":uid": userId, ":status": "unpaid" }
+    });
+    
+    const response = await docClient.send(command);
+    return response.Items || [];
+  } catch (error) {
+    console.error("Get Unpaid Logs Error:", error);
+    return [];
+  }
+}
+
+/**
+ * 精算を実行（ステータスを paid にし、Stats の金額を 0 にリセット）
+ */
+export async function executeSettlement(userId: string, unpaidLogs: any[]) {
+  try {
+    // 1. 対象の全ログを "paid" に更新
+    for (const log of unpaidLogs) {
+      await docClient.send(new PutCommand({
+        TableName: "StudyQuestLogs",
+        Item: {
+          ...log,
+          status: "paid",
+          paidAt: new Date().toISOString()
+        }
+      }));
+    }
+
+    // 2. UserStats の残高を 0 にリセット
+    const currentStats = await getUserStats(userId);
+    await docClient.send(new PutCommand({
+      TableName: "UserStats",
+      Item: {
+        ...currentStats,
+        totalPoints: 0, 
+        totalMoney: 0,  
+        lastSettledAt: new Date().toISOString()
+      }
+    }));
+
+    return { success: true };
+  } catch (error) {
+    console.error("Settlement Error:", error);
     return { success: false };
   }
 }
