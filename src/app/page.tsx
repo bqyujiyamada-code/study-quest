@@ -42,6 +42,9 @@ export default function Home() {
 
   const userId = "daughter_01";
 
+  // 単価設定: Lv1-3: 0.3円, Lv4-7: 0.4円, Lv8-10: 0.5円
+  const getRate = (lv: number) => (lv >= 8 ? 0.5 : lv >= 4 ? 0.4 : 0.3);
+
   useEffect(() => {
     async function loadData() {
       const stats = await getUserStats(userId);
@@ -77,9 +80,9 @@ export default function Home() {
     return { ...currentRank, progress, remainingText };
   };
 
-  const getRate = (lv: number) => (lv >= 8 ? 0.6 : lv >= 4 ? 0.5 : 0.4);
   const levelInfo = getLevelInfo(totalMinutes);
-  const [result, setResult] = useState<{points: number, money: number, leveledUp: boolean, isBonus: boolean} | null>(null);
+  const currentRate = getRate(levelInfo.lv);
+  const [result, setResult] = useState<{points: number, money: number, leveledUp: boolean, isBonus: boolean, rateUp: boolean} | null>(null);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -95,38 +98,27 @@ export default function Home() {
   const handleSave = async () => {
     setIsSaving(true);
     const original = startTime ? Math.floor((Date.now() - startTime) / 1000 / 60) : elapsed;
-    
-    // 修正されたactionsの引数に合わせて呼び出し
-    const res = await saveStudyLog({ 
-      userId, 
-      subject, 
-      duration: elapsed, 
-      originalDuration: original, 
-      isEdited: elapsed !== original, 
-      memo 
-    });
+    const res = await saveStudyLog({ userId, subject, duration: elapsed, originalDuration: original, isEdited: elapsed !== original, memo });
 
     if (res.success) {
+      const oldLevel = levelInfo.lv;
       const addedPoints = res.points || 0;
-      const earnedMoney = Math.floor(addedPoints * getRate(levelInfo.lv));
+      const earnedMoney = Math.floor(addedPoints * getRate(oldLevel));
       const newTotalMin = totalMinutes + elapsed;
+      const newLevel = getLevelInfo(newTotalMin).lv;
+
       const newTotalPoints = totalPoints + addedPoints;
       const newTotalMoney = totalMoney + earnedMoney;
       const newCombo = res.newCombo || 0;
 
-      await saveStudyLogAndStats({ 
-        userId, 
-        totalMinutes: newTotalMin, 
-        totalPoints: newTotalPoints, 
-        totalMoney: newTotalMoney, 
-        combo: newCombo 
-      });
+      await saveStudyLogAndStats({ userId, totalMinutes: newTotalMin, totalPoints: newTotalPoints, totalMoney: newTotalMoney, combo: newCombo });
 
       setResult({ 
         points: addedPoints, 
         money: earnedMoney, 
-        leveledUp: getLevelInfo(newTotalMin).lv > levelInfo.lv,
-        isBonus: !!res.isBonus 
+        leveledUp: newLevel > oldLevel,
+        isBonus: !!res.isBonus,
+        rateUp: (newLevel >= 4 && oldLevel < 4) || (newLevel >= 8 && oldLevel < 8)
       });
 
       setTotalMinutes(newTotalMin);
@@ -144,7 +136,6 @@ export default function Home() {
   return (
     <main className="main-container">
       <div className="content-wrapper">
-        {/* RPG風ヘッダー */}
         <div className="status-card">
           <div className="status-main">
             <div className="level-section">
@@ -164,11 +155,24 @@ export default function Home() {
             </div>
           </div>
           <div className="status-bottom">
-            <div className="stat-item"><span className="stat-label">貯まったお小遣い</span><span className="stat-value-money">{Math.floor(totalMoney)}<small>円</small></span></div>
+            <div className="stat-item">
+              <span className="stat-label">現在のお小遣い単価</span>
+              <span className="stat-value-rate">💰 1分 / {currentRate}<small>円</small></span>
+            </div>
             <div className="stat-divider"></div>
-            <div className="stat-item"><span className="stat-label">累計時間</span><span className="stat-value">{Math.floor(totalMinutes / 60)}<small>時間</small>{totalMinutes % 60}<small>分</small></span></div>
+            <div className="stat-item">
+              <span className="stat-label">累計勉強時間</span>
+              <span className="stat-value">{Math.floor(totalMinutes / 60)}<small>時間</small>{totalMinutes % 60}<small>分</small></span>
+            </div>
             <div className="stat-divider"></div>
-            <div className="stat-item"><span className="stat-label">コンボ</span><span className="stat-value">🔥 {combo}<small>日連続</small></span></div>
+            <div className="stat-item">
+              <span className="stat-label">連続コンボ</span>
+              <span className="stat-value">🔥 {combo}<small>日連続</small></span>
+            </div>
+          </div>
+          <div className="total-money-bar">
+            <span className="label">これまでにゲットしたお小遣い：</span>
+            <span className="val">{Math.floor(totalMoney)}<small>円</small></span>
           </div>
         </div>
 
@@ -216,9 +220,17 @@ export default function Home() {
             <div className="result-screen fade-in text-center">
               {result.leveledUp ? (
                 <div className="levelup-announcement">
+                  <div className="lvl-up-stars">✨🎊✨</div>
                   <h2 className="lvl-up-title">LEVEL UP!!</h2>
                   <div className="new-rank-name">{levelInfo.name}</div>
-                  <p className="rate-up-text">お小遣い単価が {getRate(levelInfo.lv)}円 にUP！</p>
+                  {result.rateUp && (
+                    <div className="rate-up-badge">
+                      お小遣い単価が <span>{getRate(levelInfo.lv)}円</span> にUPしたよ！
+                    </div>
+                  )}
+                  <div className="confetti-container">
+                    {[...Array(10)].map((_, i) => <div key={i} className="confetti"></div>)}
+                  </div>
                 </div>
               ) : (
                 <div className="clear-header">
@@ -241,6 +253,7 @@ export default function Home() {
       <style jsx>{`
         .main-container { min-height: 100vh; background: radial-gradient(circle at top left, #98FFD9 0%, #F0FFF9 100%); padding: 15px; font-family: sans-serif; box-sizing: border-box; }
         .content-wrapper { max-width: 400px; margin: 0 auto; }
+        
         .status-card { background: white; border-radius: 30px; border: 5px solid #98FFD9; margin-bottom: 20px; padding: 15px; box-shadow: 0 8px 0 #98FFD9; }
         .status-main { display: flex; align-items: center; gap: 15px; padding-bottom: 12px; border-bottom: 3px dashed #F0FFF9; margin-bottom: 12px; }
         .level-badge-large { width: 65px; height: 65px; background: linear-gradient(135deg, #FFD93D, #FF9F1A); border-radius: 18px; border: 4px solid white; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(255, 159, 26, 0.4); flex-shrink: 0; }
@@ -250,17 +263,24 @@ export default function Home() {
         .exp-bar-giant { width: 100%; height: 16px; background: #E6FFF4; border-radius: 10px; border: 2px solid #98FFD9; overflow: hidden; position: relative; }
         .exp-bar-fill-shiny { height: 100%; background: linear-gradient(90deg, #66ED9A, #00C951); transition: width 1s ease-in-out; }
         .exp-text-bold { font-size: 10px; color: #8ABBA6; font-weight: 900; margin-top: 4px; text-align: right; }
-        .status-bottom { display: flex; justify-content: space-around; text-align: center; }
-        .stat-label { font-size: 9px; color: #8ABBA6; font-weight: 900; display: block; }
-        .stat-value { font-size: 15px; font-weight: 900; color: #2D5A47; }
-        .stat-value-money { font-size: 18px; font-weight: 900; color: #FF4D6D; }
-        .stat-value small { font-size: 9px; margin-left: 1px; }
-        .stat-divider { width: 2px; height: 18px; background: #F0FFF9; align-self: center; }
+        
+        .status-bottom { display: flex; justify-content: space-around; text-align: center; margin-bottom: 10px; }
+        .stat-item { flex: 1; }
+        .stat-label { font-size: 8px; color: #8ABBA6; font-weight: 900; display: block; white-space: nowrap; margin-bottom: 2px; }
+        .stat-value { font-size: 13px; font-weight: 900; color: #2D5A47; white-space: nowrap; }
+        .stat-value-rate { font-size: 13px; font-weight: 900; color: #FB8500; white-space: nowrap; }
+        .stat-value small { font-size: 8px; margin-left: 1px; }
+        .stat-divider { width: 2px; height: 18px; background: #F0FFF9; align-self: center; margin: 0 5px; }
+
+        .total-money-bar { background: #FFF0F3; border-radius: 15px; padding: 8px 15px; display: flex; justify-content: space-between; align-items: center; border: 2px solid #FFCCD5; }
+        .total-money-bar .label { font-size: 11px; font-weight: 900; color: #FF4D6D; }
+        .total-money-bar .val { font-size: 18px; font-weight: 900; color: #FF4D6D; }
+        .total-money-bar .val small { font-size: 10px; margin-left: 2px; }
 
         .game-card { background: rgba(255, 255, 255, 0.95); border-radius: 35px; border: 4px solid white; padding: 25px; box-shadow: 0 10px 25px rgba(152, 255, 217, 0.2); }
         .title { font-size: 18px; font-weight: 900; text-align: center; color: #2D5A47; margin-bottom: 15px; }
         .subject-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .puni-button { height: 90px; border: none; background: var(--btn-shadow); border-radius: 20px; position: relative; }
+        .puni-button { height: 90px; border: none; background: var(--btn-shadow); border-radius: 20px; position: relative; cursor: pointer; }
         .puni-face { position: absolute; inset: 0 0 5px 0; background: var(--btn-color); border-radius: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         .puni-button:active .puni-face { transform: translateY(3px); }
         .puni-button .icon { font-size: 30px; }
@@ -273,7 +293,7 @@ export default function Home() {
         .puni-slider { -webkit-appearance: none; width: 100%; height: 10px; background: white; border-radius: 5px; border: 2px solid #98FFD9; }
         .puni-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 24px; height: 24px; background: #00C951; border: 3px solid white; border-radius: 50%; }
 
-        .memo-area { width: 100%; box-sizing: border-box; padding: 12px; border-radius: 15px; border: 3px solid #98FFD9; height: 70px; margin-bottom: 15px; font-size: 15px; }
+        .memo-area { width: 100%; box-sizing: border-box; padding: 12px; border-radius: 15px; border: 3px solid #98FFD9; height: 70px; margin-bottom: 15px; font-size: 15px; resize: none; }
         .puni-button-rect { width: 100%; height: 60px; border: none; border-radius: 30px; font-size: 18px; font-weight: 900; color: white; cursor: pointer; }
         .save { background: #00C951; box-shadow: 0 5px 0 #00A644; }
         .finish { background: #4CC9F0; box-shadow: 0 5px 0 #3A86FF; margin-bottom: 15px; }
@@ -284,7 +304,34 @@ export default function Home() {
         .reward-box.point { background: #FFF9CC; border-color: #FFD93D; }
         .reward-box.money { background: #E6FFF4; border-color: #98FFD9; }
         .reward-val { font-size: 24px; font-weight: 900; color: #2D5A47; }
+        .reward-label { font-size: 10px; font-weight: 900; color: #2D5A47; opacity: 0.7; display: block; margin-bottom: 5px; white-space: nowrap; }
         
+        .levelup-announcement { animation: bounceIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275); margin-bottom: 20px; position: relative; }
+        .lvl-up-stars { font-size: 24px; margin-bottom: 5px; }
+        .lvl-up-title { 
+          font-size: 38px; 
+          font-weight: 900; 
+          margin: 0;
+          background: linear-gradient(to bottom, #FF4D6D, #FFB703);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          filter: drop-shadow(2px 2px 0 white);
+          animation: rainbow 2s infinite linear;
+        }
+        .new-rank-name { font-size: 20px; font-weight: 900; color: #2D5A47; margin-top: 5px; }
+        .rate-up-badge { 
+          background: #FFF0F3; 
+          border: 2px solid #FF4D6D; 
+          color: #FF4D6D; 
+          padding: 8px 15px; 
+          border-radius: 20px; 
+          font-weight: 900; 
+          display: inline-block; 
+          margin-top: 10px; 
+          font-size: 14px;
+        }
+        .rate-up-badge span { font-size: 18px; text-decoration: underline; }
+
         .bonus-badge {
           background: linear-gradient(90deg, #FF4D6D, #FFB703);
           color: white;
@@ -296,15 +343,19 @@ export default function Home() {
           margin-bottom: 10px;
           animation: pulse 1s infinite;
         }
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
 
         .timer-circle { width: 140px; height: 140px; background: white; margin: 15px auto; border-radius: 50%; border: 6px solid #98FFD9; display: flex; align-items: center; justify-content: center; }
         .time-val { font-size: 48px; font-weight: 900; color: #2D5A47; }
-        .text-center { text-align: center; }
+        
+        @keyframes bounceIn { 0% { transform: scale(0.3); opacity: 0; } 50% { transform: scale(1.05); } 70% { transform: scale(0.9); } 100% { transform: scale(1); opacity: 1; } }
+        @keyframes rainbow { 0% { filter: hue-rotate(0deg); } 100% { filter: hue-rotate(360deg); } }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+        
         .fade-in { animation: fadeIn 0.4s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-        .back-link { background: none; border: none; color: #8ABBA6; font-size: 13px; text-decoration: underline; width: 100%; font-weight: 900; }
+        .back-link { background: none; border: none; color: #8ABBA6; font-size: 13px; text-decoration: underline; width: 100%; font-weight: 900; cursor: pointer; }
         .loading { display: flex; justify-content: center; align-items: center; min-height: 100vh; font-weight: 900; color: #2D5A47; }
+        .text-center { text-align: center; }
       `}</style>
     </main>
   );
