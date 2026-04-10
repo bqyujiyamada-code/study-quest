@@ -178,7 +178,7 @@ export default function Home() {
                 <span>🔥</span> {result.combo}日連続コンボ中！
               </div>
               <button onClick={() => setMode("SELECT")} className={`w-full ${PUNI_BTN} bg-white/10 py-6 rounded-full text-2xl font-black border border-white/20 hover:bg-white/20`}>
-                次のクエストへ 🚀
+                次のクエストへ🚀
               </button>
             </div>
           )}
