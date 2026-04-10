@@ -84,7 +84,12 @@ export async function saveStudyLog(data: {
     // 1. 現在のステータスを取得してコンボ判定
     const stats = await getUserStats(data.userId);
     const today = new Date();
-    const todayStr = today.toLocaleDateString("ja-JP", { year: "numeric", month: "2-digit", day: "2-digit" }).replaceAll("/", "-");
+    // 日本時間のYYYY-MM-DDを生成
+    const todayStr = today.toLocaleDateString("ja-JP", { 
+      year: "numeric", 
+      month: "2-digit", 
+      day: "2-digit" 
+    }).replaceAll("/", "-");
     
     let nextCombo = 1;
     
@@ -115,8 +120,24 @@ export async function saveStudyLog(data: {
       isBonus = true;
     }
 
-    // ※本来はここで「StudyLogs」という別テーブルにも明細を保存するのがエンジニア的ですが、
-    // まずはフロントへ計算結果を返します
+    // 4. StudyQuestLogsテーブルに明細を保存
+    const timestamp = new Date().toISOString();
+    await docClient.send(new PutCommand({
+      TableName: "StudyQuestLogs",
+      Item: {
+        userId: data.userId,
+        timestamp: timestamp, // ソートキーとして使用
+        date: todayStr,
+        subject: data.subject,
+        duration: data.duration,
+        originalDuration: data.originalDuration,
+        isEdited: data.isEdited,
+        memo: data.memo,
+        points: points,
+        isBonus: isBonus,
+        createdAt: timestamp
+      }
+    }));
     
     return { 
       success: true, 
