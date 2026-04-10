@@ -5,13 +5,14 @@ import { saveStudyLog } from "@/app/actions/study";
 
 type Mode = "SELECT" | "TIMER" | "CONFIRM" | "RESULT";
 
+// デザイン定義をCSS変数で扱えるように整理
 const SUBJECTS = [
-  { name: "算数", icon: "📐", base: "#4CC9F0", shadow: "#3A86FF", text: "#fff" },
-  { name: "国語", icon: "📖", base: "#FF4D6D", shadow: "#C9184A", text: "#fff" },
-  { name: "理科", icon: "🧪", base: "#72EFDD", shadow: "#208B81", text: "#1A535C" },
-  { name: "社会", icon: "🗺️", base: "#FFB703", shadow: "#FB8500", text: "#fff" },
-  { name: "論理", icon: "🧩", base: "#B5179E", shadow: "#7209B7", text: "#fff" },
-  { name: "作文", icon: "✍️", base: "#FF85A1", shadow: "#FF477E", text: "#fff" },
+  { name: "算数", icon: "📐", color: "#4CC9F0", shadow: "#3A86FF" },
+  { name: "国語", icon: "📖", color: "#FF4D6D", shadow: "#C9184A" },
+  { name: "理科", icon: "🧪", color: "#72EFDD", shadow: "#208B81" },
+  { name: "社会", icon: "🗺️", color: "#FFB703", shadow: "#FB8500" },
+  { name: "論理", icon: "🧩", color: "#B5179E", shadow: "#7209B7" },
+  { name: "作文", icon: "✍️", color: "#FF85A1", shadow: "#FF477E" },
 ];
 
 export default function Home() {
@@ -63,44 +64,37 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-[#F0FFF9] bg-[radial-gradient(circle_at_top_left,_#98FFD9_0%,_#F0FFF9_50%)] font-sans p-4 pb-20 select-none overflow-hidden relative text-[#2D5A47]">
-      
-      {/* 背景のキラキラ演出 */}
-      <div className="absolute inset-0 pointer-events-none opacity-50">
-        {[...Array(10)].map((_, i) => (
-          <div key={i} className="absolute text-2xl animate-bounce" style={{
-            left: `${Math.random() * 100}%`,
-            top: `${Math.random() * 100}%`,
-            animationDelay: `${Math.random() * 2}s`,
-            animationDuration: `${Math.random() * 3 + 2}s`
-          }}>✨</div>
+    <main className="main-container">
+      {/* キラキラ背景粒子 */}
+      <div className="sparkles">
+        {[...Array(12)].map((_, i) => (
+          <div key={i} className="sparkle">✨</div>
         ))}
       </div>
 
-      <div className="max-w-md mx-auto relative z-10">
-        
-        {/* ぷるるん・ヘッダー（レベルゲージ） */}
-        <div className="bg-white rounded-[2rem] p-4 shadow-[0_8px_20px_rgba(152,255,217,0.5)] border-4 border-[#98FFD9] mb-8 flex items-center gap-4">
-          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#FFD93D] to-[#FF9F1A] border-4 border-white shadow-[0_4px_10px_rgba(0,0,0,0.1)] flex items-center justify-center text-2xl font-black text-white italic">5</div>
-          <div className="flex-1">
-            <p className="text-xs font-black uppercase tracking-tighter text-[#8ABBA6]">Study Rank: 見習い探検家</p>
-            <div className="h-5 w-full bg-[#E6FFF4] rounded-full mt-1 border-2 border-[#98FFD9] overflow-hidden relative shadow-inner">
-              <div className="h-full bg-gradient-to-r from-[#66ED9A] to-[#00C951] w-[45%] rounded-full shadow-[2px_0_5px_rgba(0,0,0,0.1)]"></div>
-              <div className="absolute top-0 left-0 w-full h-1 bg-white/30 rounded-full"></div>
+      <div className="content-wrapper">
+        {/* レベルヘッダー */}
+        <div className="level-header">
+          <div className="level-badge">5</div>
+          <div className="level-info">
+            <span className="level-title">見習い探検家</span>
+            <div className="exp-bar-bg">
+              <div className="exp-bar-fill" style={{ width: '45%' }}></div>
             </div>
           </div>
         </div>
 
-        {/* --- メインコンテンツ：モード別 --- */}
-        <div className="bg-white/90 backdrop-blur-md rounded-[3rem] border-4 border-white shadow-[0_20px_40px_rgba(152,255,217,0.3)] p-8">
-          
+        {/* メインカード */}
+        <div className="game-card">
           {mode === "SELECT" && (
-            <div className="space-y-8">
-              <h1 className="text-3xl font-black text-center text-[#2D5A47] tracking-tight">冒険の行き先は？</h1>
-              <div className="grid grid-cols-2 gap-5">
+            <div className="fade-in">
+              <h1 className="title">冒険の行き先は？</h1>
+              <div className="subject-grid">
                 {SUBJECTS.map((s) => (
                   <button
                     key={s.name}
+                    className="puni-button"
+                    style={{ '--btn-color': s.color, '--btn-shadow': s.shadow } as any}
                     onClick={() => {
                       setSubject(s.name);
                       const now = Date.now();
@@ -108,20 +102,10 @@ export default function Home() {
                       setMode("TIMER");
                       localStorage.setItem("currentStudy", JSON.stringify({ subject: s.name, startTime: now }));
                     }}
-                    className="group relative transition-all duration-200 active:scale-90"
-                    style={{ height: '140px' }}
                   >
-                    {/* ぷにぷに立体ボタンの構造 */}
-                    <div className="absolute inset-0 rounded-[2.5rem]" style={{ backgroundColor: s.shadow }}></div>
-                    <div 
-                      className="absolute inset-x-0 top-0 bottom-2 rounded-[2.5rem] flex flex-col items-center justify-center gap-2 border-t-4 border-white/50 shadow-inner group-active:translate-y-1 transition-transform"
-                      style={{ backgroundColor: s.base, color: s.text }}
-                    >
-                      <span className="text-5xl drop-shadow-md group-hover:scale-110 transition-transform">{s.icon}</span>
-                      <span className="font-black text-lg">{s.name}</span>
-                      {/* 反射光エフェクト */}
-                      <div className="absolute top-2 left-6 right-6 h-4 bg-white/20 rounded-full"></div>
-                    </div>
+                    <span className="icon">{s.icon}</span>
+                    <span className="name">{s.name}</span>
+                    <div className="highlight"></div>
                   </button>
                 ))}
               </div>
@@ -129,99 +113,249 @@ export default function Home() {
           )}
 
           {mode === "TIMER" && (
-            <div className="text-center space-y-10 py-4">
-              <div className="inline-block bg-[#FFB3BA] text-white px-6 py-2 rounded-full font-black shadow-lg border-2 border-white animate-pulse">
-                QUESTING...
+            <div className="timer-screen fade-in">
+              <div className="status-badge">QUESTING...</div>
+              <h2 className="current-subject">{subject}</h2>
+              <div className="timer-circle">
+                <span className="time-val">{elapsed}</span>
+                <span className="time-unit">min</span>
               </div>
-              <h2 className="text-5xl font-black text-[#2D5A47]">{subject}</h2>
-              
-              <div className="relative w-56 h-56 mx-auto flex items-center justify-center bg-white rounded-full shadow-[0_10px_30px_rgba(152,255,217,0.5)] border-8 border-[#98FFD9]">
-                <div className="absolute inset-2 border-4 border-dashed border-[#98FFD9] rounded-full animate-spin-slow opacity-30"></div>
-                <div className="text-7xl font-mono font-black text-[#2D5A47]">
-                  {elapsed}<span className="text-2xl ml-1">min</span>
-                </div>
-              </div>
-
-              <button
-                onClick={() => setMode("CONFIRM")}
-                className="w-full relative h-20 active:scale-95 transition-all"
-              >
-                <div className="absolute inset-0 bg-[#E66B74] rounded-full"></div>
-                <div className="absolute inset-x-0 top-0 bottom-2 bg-[#FF8B94] rounded-full border-t-4 border-white/40 flex items-center justify-center text-2xl font-black text-white shadow-lg active:translate-y-1 transition-transform">
-                  クエスト完了！ 🏁
-                </div>
+              <button className="puni-button-rect" onClick={() => setMode("CONFIRM")}>
+                クエスト完了！ 🏁
               </button>
             </div>
           )}
 
           {mode === "CONFIRM" && (
-            <div className="space-y-8">
-              <h2 className="text-3xl font-black text-center text-[#4A7C66]">報告を書こう！ 📖</h2>
-              <div className="bg-[#F0FFF9] p-6 rounded-[2.5rem] border-4 border-[#98FFD9] shadow-inner">
-                <p className="text-xs font-black text-[#8ABBA6] mb-4 text-center tracking-widest uppercase italic">Study Time</p>
-                <div className="flex items-center justify-center gap-6">
-                  <button onClick={() => setElapsed(Math.max(0, elapsed - 5))} className="w-14 h-14 bg-white rounded-full border-4 border-[#98FFD9] text-3xl font-black shadow-md active:scale-90">-</button>
-                  <span className="text-6xl font-mono font-black px-4">{elapsed}</span>
-                  <button onClick={() => setElapsed(elapsed + 5)} className="w-14 h-14 bg-white rounded-full border-4 border-[#98FFD9] text-3xl font-black shadow-md active:scale-90">+</button>
-                </div>
+            <div className="confirm-screen fade-in">
+              <h2 className="title">報告を書こう！ 📖</h2>
+              <div className="time-editor">
+                <button onClick={() => setElapsed(Math.max(0, elapsed - 5))}>-</button>
+                <div className="time-display">{elapsed}</div>
+                <button onClick={() => setElapsed(elapsed + 5)}>+</button>
               </div>
               <textarea 
                 value={memo}
                 onChange={(e) => setMemo(e.target.value)}
-                placeholder="どんな冒険（勉強）をしたかな？"
-                className="w-full p-6 rounded-[2.5rem] border-4 border-[#98FFD9] bg-white h-36 focus:outline-none shadow-inner text-lg placeholder:text-[#A0C4B4]"
+                placeholder="勉強の内容をメモしよう！"
+                className="memo-area"
               />
-              <button
-                onClick={handleSave}
-                disabled={isSaving}
-                className="w-full relative h-20 active:scale-95 transition-all disabled:opacity-50"
-              >
-                <div className="absolute inset-0 bg-[#00A644] rounded-full"></div>
-                <div className="absolute inset-x-0 top-0 bottom-2 bg-[#00C951] rounded-full border-t-4 border-white/40 flex items-center justify-center text-2xl font-black text-white shadow-lg active:translate-y-1 transition-transform">
-                  {isSaving ? "セーブ中..." : "セーブして完了！ ✨"}
-                </div>
+              <button className="puni-button-rect save" onClick={handleSave} disabled={isSaving}>
+                {isSaving ? "セーブ中..." : "セーブして完了！ ✨"}
               </button>
             </div>
           )}
 
           {mode === "RESULT" && result && (
-            <div className="text-center space-y-8 animate-in zoom-in duration-500">
-              <div className="text-8xl animate-bounce">👑</div>
-              <h2 className="text-5xl font-black text-[#FFB200] drop-shadow-md">CLEAR!</h2>
-              
-              <div className="bg-[#FFF9CC] p-10 rounded-[3.5rem] border-4 border-[#FFD93D] relative shadow-xl">
-                <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-[#FFD93D] text-white px-6 py-2 rounded-full text-xs font-black shadow-md border-2 border-white uppercase tracking-widest">Rewards</div>
-                <div className="text-7xl font-black text-[#B38F00]">+{result.points}</div>
-                <p className="font-black text-[#B38F00] text-sm opacity-60">STUDY POINTS</p>
+            <div className="result-screen fade-in">
+              <div className="crown">👑</div>
+              <h2 className="clear-text">CLEAR!</h2>
+              <div className="reward-box">
+                <span className="reward-label">STUDY POINTS</span>
+                <span className="reward-val">+{result.points}</span>
               </div>
-
-              <div className="flex items-center justify-center gap-2 text-[#FF477E] font-black bg-[#FFE6EA] px-6 py-2 rounded-full border-2 border-[#FF85A1] shadow-sm">
-                <span>🔥</span> {result.combo}日連続コンボ中！
-              </div>
-
-              <button
-                onClick={() => setMode("SELECT")}
-                className="w-full relative h-20 active:scale-95 transition-all"
-              >
-                <div className="absolute inset-0 bg-[#1D3A2F] rounded-full"></div>
-                <div className="absolute inset-x-0 top-0 bottom-2 bg-[#2D5A47] rounded-full border-t-4 border-white/20 flex items-center justify-center text-2xl font-black text-white shadow-lg active:translate-y-1 transition-transform">
-                  次のクエストへ 🚀
-                </div>
+              <div className="combo-badge">🔥 {result.combo}日連続！</div>
+              <button className="puni-button-rect next" onClick={() => setMode("SELECT")}>
+                次へすすむ 🚀
               </button>
             </div>
           )}
-
         </div>
       </div>
 
-      <style jsx global>{`
-        @keyframes spin-slow {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
+      <style jsx>{`
+        .main-container {
+          min-height: 100vh;
+          background: radial-gradient(circle at top left, #98FFD9 0%, #F0FFF9 100%);
+          padding: 20px;
+          font-family: 'Hiragino Maru Gothic ProN', 'Meiryo', sans-serif;
+          overflow-x: hidden;
         }
-        .animate-spin-slow {
-          animation: spin-slow 12s linear infinite;
+        .content-wrapper {
+          max-width: 400px;
+          margin: 0 auto;
         }
+        .level-header {
+          background: white;
+          padding: 15px;
+          border-radius: 25px;
+          border: 4px solid #98FFD9;
+          display: flex;
+          align-items: center;
+          gap: 15px;
+          margin-bottom: 25px;
+          box-shadow: 0 8px 0 #98FFD9;
+        }
+        .level-badge {
+          width: 50px;
+          height: 50px;
+          background: linear-gradient(135deg, #FFD93D, #FF9F1A);
+          border-radius: 50%;
+          border: 3px solid white;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 24px;
+          font-weight: 900;
+          color: white;
+          box-shadow: 0 4px 0 rgba(0,0,0,0.1);
+        }
+        .level-title {
+          font-size: 12px;
+          font-weight: 900;
+          color: #8ABBA6;
+        }
+        .exp-bar-bg {
+          height: 15px;
+          background: #E6FFF4;
+          border-radius: 10px;
+          border: 2px solid #98FFD9;
+          margin-top: 5px;
+          overflow: hidden;
+        }
+        .exp-bar-fill {
+          height: 100%;
+          background: linear-gradient(to right, #66ED9A, #00C951);
+        }
+        .game-card {
+          background: rgba(255, 255, 255, 0.9);
+          border-radius: 40px;
+          border: 4px solid white;
+          padding: 30px 20px;
+          box-shadow: 0 20px 40px rgba(152, 255, 217, 0.4);
+        }
+        .title {
+          font-size: 24px;
+          font-weight: 900;
+          text-align: center;
+          color: #2D5A47;
+          margin-bottom: 25px;
+        }
+        .subject-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 15px;
+        }
+        .puni-button {
+          position: relative;
+          height: 130px;
+          border: none;
+          background: var(--btn-shadow);
+          border-radius: 30px;
+          cursor: pointer;
+          padding: 0;
+          transition: transform 0.1s;
+        }
+        .puni-button .name {
+          position: absolute;
+          inset: 0 0 8px 0;
+          background: var(--btn-color);
+          border-radius: 30px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: flex-end;
+          padding-bottom: 15px;
+          color: white;
+          font-weight: 900;
+          font-size: 18px;
+          border-top: 4px solid rgba(255,255,255,0.4);
+          transition: transform 0.1s;
+        }
+        .puni-button .icon {
+          position: absolute;
+          top: 20px;
+          left: 50%;
+          transform: translateX(-50%);
+          font-size: 45px;
+          z-index: 2;
+        }
+        .puni-button:active {
+          transform: scale(0.95);
+        }
+        .puni-button:active .name {
+          transform: translateY(4px);
+        }
+        .puni-button-rect {
+          width: 100%;
+          height: 70px;
+          border: none;
+          background: #E66B74;
+          border-radius: 35px;
+          position: relative;
+          font-size: 20px;
+          font-weight: 900;
+          color: white;
+          box-shadow: 0 8px 0 #C9184A;
+          cursor: pointer;
+        }
+        .puni-button-rect:active {
+          transform: translateY(4px);
+          box-shadow: 0 4px 0 #C9184A;
+        }
+        .timer-circle {
+          width: 200px;
+          height: 200px;
+          background: white;
+          margin: 30px auto;
+          border-radius: 50%;
+          border: 8px solid #98FFD9;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-direction: column;
+          box-shadow: 0 10px 30px rgba(152, 255, 217, 0.5);
+        }
+        .time-val { font-size: 60px; font-weight: 900; color: #2D5A47; line-height: 1; }
+        .time-unit { font-size: 20px; font-weight: 900; color: #8ABBA6; }
+        .time-editor {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 20px;
+          background: #F0FFF9;
+          padding: 20px;
+          border-radius: 30px;
+          border: 3px solid #98FFD9;
+        }
+        .time-editor button {
+          width: 50px;
+          height: 50px;
+          background: white;
+          border: 3px solid #98FFD9;
+          border-radius: 50%;
+          font-size: 24px;
+          font-weight: 900;
+          color: #2D5A47;
+          box-shadow: 0 4px 0 #98FFD9;
+        }
+        .time-display { font-size: 45px; font-weight: 900; color: #2D5A47; }
+        .memo-area {
+          width: 100%;
+          margin-top: 20px;
+          padding: 20px;
+          border-radius: 20px;
+          border: 3px solid #98FFD9;
+          font-size: 16px;
+          height: 120px;
+          margin-bottom: 20px;
+        }
+        .save { background: #00C951; box-shadow: 0 8px 0 #00A644; }
+        .reward-box {
+          background: #FFF9CC;
+          padding: 40px 20px;
+          border-radius: 40px;
+          border: 4px solid #FFD93D;
+          text-align: center;
+          margin-bottom: 20px;
+        }
+        .reward-val { display: block; font-size: 60px; font-weight: 900; color: #B38F00; }
+        .reward-label { font-size: 14px; font-weight: 900; color: #B38F00; opacity: 0.6; }
+        .fade-in { animation: fadeIn 0.5s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .sparkles { position: absolute; inset: 0; pointer-events: none; }
+        .sparkle { position: absolute; font-size: 20px; animation: bounce 3s infinite; }
+        @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-20px); } }
       `}</style>
     </main>
   );
