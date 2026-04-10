@@ -19,6 +19,19 @@ const client = new DynamoDBClient({
 const docClient = DynamoDBDocumentClient.from(client);
 
 /**
+ * レベルに応じた単価を計算する（0.4円〜0.6円）
+ */
+const getUnitPrice = (totalMinutes: number) => {
+  // 100分で1レベル上がる計算（例）
+  const level = Math.floor(totalMinutes / 100) + 1;
+  const currentLevel = level > 10 ? 10 : level;
+
+  if (currentLevel <= 3) return 0.4;
+  if (currentLevel <= 7) return 0.5;
+  return 0.6; // Lv 8-10
+};
+
+/**
  * ユーザーの現在のステータスを取得
  */
 export async function getUserStats(userId: string) {
@@ -44,6 +57,7 @@ export async function getUserStats(userId: string) {
 
 /**
  * ユーザーステータス（累計データ）を更新
+ * ※フロントエンドからの呼び出し用
  */
 export async function saveStudyLogAndStats(data: {
   userId: string;
@@ -74,7 +88,7 @@ export async function saveStudyLogAndStats(data: {
 }
 
 /**
- * 個別の勉強ログ保存とポイント・コンボ計算
+ * 個別の勉強ログ保存とポイント・単価・コンボ計算
  */
 export async function saveStudyLog(data: {
   userId: string;
@@ -93,8 +107,8 @@ export async function saveStudyLog(data: {
       day: "2-digit" 
     }).replaceAll("/", "-");
     
+    // 1. コンボ判定
     let nextCombo = 1;
-    
     if (stats.lastDate) {
       const lastDate = new Date(stats.lastDate);
       const diffTime = today.getTime() - lastDate.getTime();
@@ -109,17 +123,21 @@ export async function saveStudyLog(data: {
       }
     }
 
+    // 2. ポイント計算 (1分 = 1pt) + ボーナス判定
     let points = data.duration;
     let isBonus = false;
-
     if (nextCombo > 0 && nextCombo % 5 === 0) {
       points = Math.floor(points * 1.25);
       isBonus = true;
     }
 
+    // 3. 【重要】現在のレベルに基づく単価計算
+    const unitPrice = getUnitPrice(stats.totalMinutes);
+    const earnedMoney = Math.floor(points * unitPrice);
+
     const timestamp = new Date().toISOString();
 
-    // 1. StudyQuestLogsテーブルに明細を保存 (status: unpaid を追加)
+    // 4. StudyQuestLogsテーブルに明細を保存 (単価と金額も記録)
     await docClient.send(new PutCommand({
       TableName: "StudyQuestLogs",
       Item: {
@@ -132,15 +150,18 @@ export async function saveStudyLog(data: {
         isEdited: data.isEdited,
         memo: data.memo,
         points: points,
+        unitPrice: unitPrice, // その時の単価
+        earnedMoney: earnedMoney, // その時の獲得金額
         isBonus: isBonus,
-        status: "unpaid", // 未精算フラグ
+        status: "unpaid",
         createdAt: timestamp
       }
     }));
     
     return { 
       success: true, 
-      points: points, 
+      points: points,
+      earnedMoney: earnedMoney, // フロントエンドに返す
       isBonus: isBonus,
       newCombo: nextCombo 
     };
@@ -151,7 +172,7 @@ export async function saveStudyLog(data: {
 }
 
 /**
- * 未精算の勉強ログをすべて取得する（パパ管理画面用）
+ * 未精算の勉強ログをすべて取得する
  */
 export async function getUnpaidLogs(userId: string) {
   try {
@@ -175,7 +196,6 @@ export async function getUnpaidLogs(userId: string) {
  */
 export async function executeSettlement(userId: string, unpaidLogs: any[]) {
   try {
-    // 1. 対象の全ログを "paid" に更新
     for (const log of unpaidLogs) {
       await docClient.send(new PutCommand({
         TableName: "StudyQuestLogs",
@@ -187,7 +207,6 @@ export async function executeSettlement(userId: string, unpaidLogs: any[]) {
       }));
     }
 
-    // 2. UserStats の残高を 0 にリセット
     const currentStats = await getUserStats(userId);
     await docClient.send(new PutCommand({
       TableName: "UserStats",
