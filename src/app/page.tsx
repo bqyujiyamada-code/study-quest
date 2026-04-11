@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { saveStudyLog, getUserStats, saveStudyLogAndStats } from "@/app/actions/study";
+import Link from "next/link"; // 追加
 
 type Mode = "SELECT" | "TIMER" | "CONFIRM" | "RESULT";
 
@@ -43,7 +44,6 @@ export default function Home() {
 
   const userId = "daughter_01";
 
-  // ★単価設定: Lv1-3: 0.4円, Lv4-7: 0.5円, Lv8-10: 0.6円
   const getRate = (lv: number) => (lv >= 8 ? 0.6 : lv >= 4 ? 0.5 : 0.4);
 
   useEffect(() => {
@@ -54,7 +54,6 @@ export default function Home() {
       setTotalMoney(stats.totalMoney || 0);
       setCombo(stats.combo || 0);
 
-      // リロード時に進行中のセッションを復元
       const stored = localStorage.getItem("currentStudy");
       if (stored) {
         const { subject, startTime } = JSON.parse(stored);
@@ -100,23 +99,18 @@ export default function Home() {
   const handleSave = async () => {
     setIsSaving(true);
     const original = startTime ? Math.floor((Date.now() - startTime) / 1000 / 60) : elapsed;
-    
-    // 1. 個別のログ保存 (バックエンドで自動的に単価・金額・unpaidフラグが処理される)
     const res = await saveStudyLog({ userId, subject, duration: elapsed, originalDuration: original, isEdited: elapsed !== original, memo });
 
     if (res.success) {
       const oldLevel = levelInfo.lv;
       const addedPoints = res.points || 0;
       const earnedMoney = res.earnedMoney || 0; 
-
       const newTotalMin = totalMinutes + elapsed;
       const newLevel = getLevelInfo(newTotalMin).lv;
-
       const newTotalPoints = totalPoints + addedPoints;
       const newTotalMoney = totalMoney + earnedMoney;
       const newCombo = res.newCombo || 0;
 
-      // 2. 累計ステータスの更新
       await saveStudyLogAndStats({ userId, totalMinutes: newTotalMin, totalPoints: newTotalPoints, totalMoney: newTotalMoney, combo: newCombo });
 
       setResult({ 
@@ -132,7 +126,7 @@ export default function Home() {
       setTotalMoney(newTotalMoney);
       setCombo(newCombo);
       setMode("RESULT");
-      localStorage.removeItem("currentStudy"); // 保存完了したので削除
+      localStorage.removeItem("currentStudy");
     }
     setIsSaving(false);
   };
@@ -180,6 +174,11 @@ export default function Home() {
             <span className="label">今月のおこづかい（未せいさん）：</span>
             <span className="val">{Math.floor(totalMoney)}<small>円</small></span>
           </div>
+          
+          {/* --- 履歴へのリンクを追加 --- */}
+          <Link href="/history" className="history-nav-link">
+             📜 これまでの冒険のあしあとを見る ➡
+          </Link>
         </div>
 
         <div className="game-card">
@@ -211,7 +210,7 @@ export default function Home() {
               <button className="puni-button-rect finish" onClick={() => setMode("CONFIRM")}>冒険を切り上げる 🏁</button>
               <button className="back-link" onClick={() => { 
                 if(confirm("選びなおす？")) {
-                  localStorage.removeItem("currentStudy"); // 選び直し時は一時保存を消去
+                  localStorage.removeItem("currentStudy");
                   setMode("SELECT"); 
                 }
               }}>← 科目を選びなおす</button>
@@ -245,9 +244,6 @@ export default function Home() {
                       お小遣い単価が <span>{getRate(levelInfo.lv)}円</span> にUPしたよ！
                     </div>
                   )}
-                  <div className="confetti-container">
-                    {[...Array(10)].map((_, i) => <div key={i} className="confetti"></div>)}
-                  </div>
                 </div>
               ) : (
                 <div className="clear-header">
@@ -294,6 +290,12 @@ export default function Home() {
         .total-money-bar .val { font-size: 18px; font-weight: 900; color: #FF4D6D; }
         .total-money-bar .val small { font-size: 10px; margin-left: 2px; }
 
+        /* 履歴リンクのスタイル */
+        .history-nav-link { 
+          display: block; text-align: center; margin-top: 12px; font-size: 12px; 
+          font-weight: 900; color: #8ABBA6; text-decoration: none;
+        }
+
         .game-card { background: rgba(255, 255, 255, 0.95); border-radius: 35px; border: 4px solid white; padding: 25px; box-shadow: 0 10px 25px rgba(152, 255, 217, 0.2); }
         .title { font-size: 18px; font-weight: 900; text-align: center; color: #2D5A47; margin-bottom: 15px; }
         .subject-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -326,38 +328,23 @@ export default function Home() {
         .levelup-announcement { animation: bounceIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275); margin-bottom: 20px; position: relative; }
         .lvl-up-stars { font-size: 24px; margin-bottom: 5px; }
         .lvl-up-title { 
-          font-size: 38px; 
-          font-weight: 900; 
-          margin: 0;
+          font-size: 38px; font-weight: 900; margin: 0;
           background: linear-gradient(to bottom, #FF4D6D, #FFB703);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          filter: drop-shadow(2px 2px 0 white);
-          animation: rainbow 2s infinite linear;
+          -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+          filter: drop-shadow(2px 2px 0 white); animation: rainbow 2s infinite linear;
         }
         .new-rank-name { font-size: 20px; font-weight: 900; color: #2D5A47; margin-top: 5px; }
         .rate-up-badge { 
-          background: #FFF0F3; 
-          border: 2px solid #FF4D6D; 
-          color: #FF4D6D; 
-          padding: 8px 15px; 
-          border-radius: 20px; 
-          font-weight: 900; 
-          display: inline-block; 
-          margin-top: 10px; 
-          font-size: 14px;
+          background: #FFF0F3; border: 2px solid #FF4D6D; color: #FF4D6D; 
+          padding: 8px 15px; border-radius: 20px; font-weight: 900; 
+          display: inline-block; margin-top: 10px; font-size: 14px;
         }
         .rate-up-badge span { font-size: 18px; text-decoration: underline; }
 
         .bonus-badge {
-          background: linear-gradient(90deg, #FF4D6D, #FFB703);
-          color: white;
-          font-size: 12px;
-          font-weight: 900;
-          padding: 5px 15px;
-          border-radius: 15px;
-          display: inline-block;
-          margin-bottom: 10px;
+          background: linear-gradient(90deg, #FF4D6D, #FFB703); color: white;
+          font-size: 12px; font-weight: 900; padding: 5px 15px;
+          border-radius: 15px; display: inline-block; margin-bottom: 10px;
           animation: pulse 1s infinite;
         }
 

@@ -1,18 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getAllStudyLogs } from "@/app/actions/study"; // 作成したアクションをインポート
+import { getAllStudyLogs } from "@/app/actions/study";
+import Link from "next/link"; // 追加
 
 export default function HistoryPage() {
   const [allLogs, setAllLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7)); // "2026-04"
+  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
   const userId = "daughter_01";
 
   useEffect(() => {
     async function loadHistory() {
       setLoading(true);
-      // DynamoDBから全履歴を取得
       const data = await getAllStudyLogs(userId);
       setAllLogs(data);
       setLoading(false);
@@ -20,15 +20,11 @@ export default function HistoryPage() {
     loadHistory();
   }, []);
 
-  // 選択された月でフィルタリング
   const filteredLogs = allLogs.filter(log => log.timestamp.startsWith(selectedMonth));
-
-  // 月間サマリーの計算
   const monthlyMinutes = filteredLogs.reduce((sum, log) => sum + (log.duration || 0), 0);
   const monthlyMoney = filteredLogs.reduce((sum, log) => sum + (log.earnedMoney || 0), 0);
   const monthlyPoints = filteredLogs.reduce((sum, log) => sum + (log.points || 0), 0);
 
-  // 「04月」を「4月」にするための処理
   const displayMonth = parseInt(selectedMonth.split('-')[1], 10);
 
   if (loading) return <div className="loading">これまでの記録を読み込み中...</div>;
@@ -36,6 +32,13 @@ export default function HistoryPage() {
   return (
     <main className="history-container">
       <div className="content-wrapper">
+        {/* --- 戻るボタンセクション --- */}
+        <nav className="top-nav">
+          <Link href="/" className="back-link">
+            <span className="icon">⬅</span> 冒険にもどる
+          </Link>
+        </nav>
+
         <header className="history-header">
           <h1>冒険のあしあと</h1>
           <div className="month-selector">
@@ -50,7 +53,6 @@ export default function HistoryPage() {
 
         {/* 月間サマリー */}
         <div className="monthly-summary">
-          {/* parseIntした値を使うことで「04」が「4」になります */}
           <div className="summary-title">{displayMonth}月の合計</div>
           <div className="summary-grid">
             <div className="summary-item">
@@ -88,7 +90,6 @@ export default function HistoryPage() {
                 <div className="card-right">
                   <div className="money-plus">+¥{log.earnedMoney}</div>
                   {log.isBonus && <div className="bonus-tag">COMBO!</div>}
-                  {/* 精算済みかどうかのステータスも一応表示 */}
                   <div className={`status-tag ${log.status === "paid" ? "paid" : "unpaid"}`}>
                     {log.status === "paid" ? "精算済み" : "未精算"}
                   </div>
@@ -103,6 +104,16 @@ export default function HistoryPage() {
         .history-container { min-height: 100vh; background: #fef9e7; padding: 20px; font-family: sans-serif; }
         .content-wrapper { max-width: 450px; margin: 0 auto; }
         
+        /* 戻るボタンのスタイル */
+        .top-nav { margin-bottom: 20px; }
+        .back-link { 
+          display: inline-flex; align-items: center; gap: 8px;
+          text-decoration: none; color: #2D5A47; font-weight: 900; font-size: 14px;
+          background: white; padding: 8px 16px; border-radius: 50px;
+          border: 2px solid #FFD93D; box-shadow: 0 4px 0 #FFD93D;
+        }
+        .back-link:active { transform: translateY(2px); box-shadow: 0 2px 0 #FFD93D; }
+
         .history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
         .history-header h1 { font-size: 22px; font-weight: 900; color: #2D5A47; }
         
