@@ -5,7 +5,8 @@ import {
   DynamoDBDocumentClient, 
   GetCommand, 
   PutCommand, 
-  ScanCommand 
+  ScanCommand,
+  QueryCommand 
 } from "@aws-sdk/lib-dynamodb";
 
 const client = new DynamoDBClient({
@@ -19,7 +20,7 @@ const client = new DynamoDBClient({
 const docClient = DynamoDBDocumentClient.from(client);
 
 /**
- * 【追加】レベルに応じた単価を計算する（0.4円〜0.6円）
+ * レベルに応じた単価を計算する（0.4円〜0.6円）
  * 100分ごとに1レベル上がる計算（450分でLv.10前後）
  */
 const getUnitPrice = (totalMinutes: number) => {
@@ -43,6 +44,7 @@ export async function getUserStats(userId: string) {
     const response = await docClient.send(command);
     
     return response.Item || { 
+      userId,
       totalMinutes: 0, 
       totalPoints: 0, 
       totalMoney: 0, 
@@ -51,7 +53,7 @@ export async function getUserStats(userId: string) {
     };
   } catch (error) {
     console.error("DynamoDB Get Error:", error);
-    return { totalMinutes: 0, totalPoints: 0, totalMoney: 0, combo: 0, lastDate: "" };
+    return { userId, totalMinutes: 0, totalPoints: 0, totalMoney: 0, combo: 0, lastDate: "" };
   }
 }
 
@@ -87,7 +89,7 @@ export async function saveStudyLogAndStats(data: {
 }
 
 /**
- * 個別の勉強ログ保存とポイント・コンボ・【単価】計算
+ * 個別の勉強ログ保存
  */
 export async function saveStudyLog(data: {
   userId: string;
@@ -128,14 +130,10 @@ export async function saveStudyLog(data: {
       isBonus = true;
     }
 
-    // --- 【修正ポイント】ここから単価計算を追加 ---
     const unitPrice = getUnitPrice(stats.totalMinutes);
     const earnedMoney = Math.floor(points * unitPrice);
-    // --- ここまで ---
-
     const timestamp = new Date().toISOString();
 
-    // StudyQuestLogsテーブルに明細を保存
     await docClient.send(new PutCommand({
       TableName: "StudyQuestLogs",
       Item: {
@@ -148,8 +146,8 @@ export async function saveStudyLog(data: {
         isEdited: data.isEdited,
         memo: data.memo,
         points: points,
-        unitPrice: unitPrice,    // その時の単価を保存
-        earnedMoney: earnedMoney, // その時の獲得金額を保存
+        unitPrice: unitPrice,
+        earnedMoney: earnedMoney,
         isBonus: isBonus,
         status: "unpaid",
         createdAt: timestamp
@@ -159,7 +157,7 @@ export async function saveStudyLog(data: {
     return { 
       success: true, 
       points: points,
-      earnedMoney: earnedMoney, // フロントエンドに計算結果を渡す
+      earnedMoney: earnedMoney,
       isBonus: isBonus,
       newCombo: nextCombo 
     };
@@ -171,6 +169,7 @@ export async function saveStudyLog(data: {
 
 /**
  * 未精算の勉強ログをすべて取得する
+ * (Scanだと全件走査になるため、大規模時はQuery+Index推奨ですが、現状はScanで実装)
  */
 export async function getUnpaidLogs(userId: string) {
   try {
@@ -190,10 +189,31 @@ export async function getUnpaidLogs(userId: string) {
 }
 
 /**
+ * 【追加】すべての勉強ログ（履歴用）を取得する
+ */
+export async function getAllStudyLogs(userId: string) {
+  try {
+    const command = new QueryCommand({
+      TableName: "StudyQuestLogs",
+      KeyConditionExpression: "userId = :uid",
+      ExpressionAttributeValues: { ":uid": userId },
+      ScanIndexForward: false // 降順（新しい順）で取得
+    });
+    
+    const response = await docClient.send(command);
+    return response.Items || [];
+  } catch (error) {
+    console.error("Get All Logs Error:", error);
+    return [];
+  }
+}
+
+/**
  * 精算を実行
  */
 export async function executeSettlement(userId: string, unpaidLogs: any[]) {
   try {
+    // 1. 各ログのステータスをpaidに更新
     for (const log of unpaidLogs) {
       await docClient.send(new PutCommand({
         TableName: "StudyQuestLogs",
@@ -205,14 +225,12 @@ export async function executeSettlement(userId: string, unpaidLogs: any[]) {
       }));
     }
 
+    // 2. 累計ステータスのお小遣い(totalMoney)を0にリセット
     const currentStats = await getUserStats(userId);
     await docClient.send(new PutCommand({
       TableName: "UserStats",
       Item: {
         ...currentStats,
-        // totalPointsは累計として残すならリセット不要ですが、
-        // 「今月のポイント」として管理しているなら0にします。
-        // ここではお小遣い(totalMoney)を0にリセットします。
         totalMoney: 0,  
         lastSettledAt: new Date().toISOString()
       }
