@@ -2,7 +2,18 @@
 
 import { useEffect, useState } from "react";
 import { getAllStudyLogs } from "@/app/actions/study";
-import Link from "next/link"; // 追加
+import Link from "next/link";
+
+// 科目ごとのアイコンを定義（英語を追加）
+const SUBJECT_ICONS: { [key: string]: string } = {
+  "算数": "📐",
+  "国語": "📖",
+  "理科": "🧪",
+  "社会": "🗺️",
+  "英語": "🔤", // 追加！
+  "論理": "🧩",
+  "作文": "✍️",
+};
 
 export default function HistoryPage() {
   const [allLogs, setAllLogs] = useState<any[]>([]);
@@ -83,7 +94,10 @@ export default function HistoryPage() {
                     <span className="dow">{new Date(log.timestamp).toLocaleDateString("ja-JP", {weekday: "short"})}</span>
                   </div>
                   <div className="log-info">
-                    <div className="subject-name">{log.subject}</div>
+                    {/* アイコンを表示するように修正 */}
+                    <div className="subject-name">
+                      {SUBJECT_ICONS[log.subject] || "📝"} {log.subject}
+                    </div>
                     <div className="duration-text">{log.duration}分間 冒険した！</div>
                   </div>
                 </div>
@@ -104,7 +118,6 @@ export default function HistoryPage() {
         .history-container { min-height: 100vh; background: #fef9e7; padding: 20px; font-family: sans-serif; }
         .content-wrapper { max-width: 450px; margin: 0 auto; }
         
-        /* 戻るボタンのスタイル */
         .top-nav { margin-bottom: 20px; }
         .back-link { 
           display: inline-flex; align-items: center; gap: 8px;

@@ -3,6 +3,17 @@
 import { useEffect, useState } from "react";
 import { getUnpaidLogs, executeSettlement, getAllStudyLogs } from "@/app/actions/study";
 
+// 科目ごとのバッジカラー設定（英語を追加）
+const SUBJECT_COLORS: { [key: string]: string } = {
+  "算数": "#4CC9F0", // 空色
+  "国語": "#FF4D6D", // ピンク
+  "理科": "#00C951", // 緑
+  "社会": "#FB8500", // オレンジ
+  "英語": "#7209B7", // 紫（英語用に追加！）
+  "論理": "#4361EE", // 青
+  "作文": "#4895EF", // 水色
+};
+
 export default function AdminPage() {
   const [unpaidLogs, setUnpaidLogs] = useState<any[]>([]);
   const [allLogs, setAllLogs] = useState<any[]>([]);
@@ -13,7 +24,6 @@ export default function AdminPage() {
 
   const fetchData = async () => {
     setLoading(true);
-    // 未精算ログと全履歴を同時に取得
     const [unpaid, all] = await Promise.all([
       getUnpaidLogs(userId),
       getAllStudyLogs(userId)
@@ -28,13 +38,9 @@ export default function AdminPage() {
     fetchData();
   }, []);
 
-  // 1. 未精算の合計金額
   const unpaidTotalAmount = unpaidLogs.reduce((sum, log) => sum + (log.earnedMoney || 0), 0);
-
-  // 2. 選択された月のフィルタリング
   const filteredLogs = allLogs.filter(log => log.timestamp.startsWith(selectedMonth));
 
-  // 3. 選択された月のサマリー計算
   const monthlyMinutes = filteredLogs.reduce((sum, log) => sum + (log.duration || 0), 0);
   const monthlyMoney = filteredLogs.reduce((sum, log) => sum + (log.earnedMoney || 0), 0);
   const monthlyPoints = filteredLogs.reduce((sum, log) => sum + (log.points || 0), 0);
@@ -115,7 +121,13 @@ export default function AdminPage() {
                 <div key={log.timestamp} className={`log-card ${!log.unpaid ? 'settled' : ''}`}>
                   <div className="log-header">
                     <div className="header-left">
-                      <div className="subject-badge">{log.subject}</div>
+                      {/* 背景色を科目ごとに動的に変更 */}
+                      <div 
+                        className="subject-badge" 
+                        style={{ backgroundColor: SUBJECT_COLORS[log.subject] || "#4CC9F0" }}
+                      >
+                        {log.subject}
+                      </div>
                       {!log.unpaid && <span className="settled-badge">精算済</span>}
                     </div>
                     <div className="log-date">
@@ -158,7 +170,6 @@ export default function AdminPage() {
         .admin-header h1 { font-size: 20px; font-weight: 900; margin-bottom: 5px; }
         .admin-header p { font-size: 13px; color: #8ABBA6; font-weight: bold; }
 
-        /* 未精算カード */
         .summary-card { background: white; border-radius: 25px; padding: 25px; border: 4px solid #98FFD9; box-shadow: 0 8px 0 #98FFD9; text-align: center; margin-bottom: 40px; }
         .summary-label { font-size: 14px; font-weight: 900; color: #8ABBA6; margin-bottom: 5px; }
         .summary-amount { font-size: 48px; font-weight: 900; margin-bottom: 15px; }
@@ -167,7 +178,6 @@ export default function AdminPage() {
         .settle-button:active { transform: translateY(3px); box-shadow: 0 2px 0 #00A644; }
         .settle-button.disabled { background: #ccc; box-shadow: 0 5px 0 #aaa; cursor: not-allowed; }
 
-        /* 月間履歴セクション */
         .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
         .list-title { font-size: 18px; font-weight: 900; }
         .month-input { border: 2px solid #FFD93D; border-radius: 10px; padding: 5px 8px; font-weight: 900; color: #2D5A47; outline: none; }
@@ -178,14 +188,13 @@ export default function AdminPage() {
         .stat-box .value { font-size: 14px; font-weight: 900; }
         .stat-box small { font-size: 9px; }
 
-        /* 履歴リスト */
         .log-list { display: flex; flex-direction: column; gap: 12px; }
         .log-card { background: white; border-radius: 20px; padding: 15px; border: 2px solid #eef2f6; transition: opacity 0.3s; }
         .log-card.settled { opacity: 0.7; background: #fafafa; }
         
         .log-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
         .header-left { display: flex; gap: 8px; align-items: center; }
-        .subject-badge { background: #4CC9F0; color: white; padding: 3px 10px; border-radius: 8px; font-size: 11px; font-weight: 900; }
+        .subject-badge { color: white; padding: 3px 10px; border-radius: 8px; font-size: 11px; font-weight: 900; }
         .settled-badge { font-size: 10px; color: #8ABBA6; font-weight: 900; background: #f0f0f0; padding: 2px 6px; border-radius: 4px; }
         .log-date { font-size: 11px; color: #aaa; font-weight: bold; }
         

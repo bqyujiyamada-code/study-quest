@@ -110,19 +110,27 @@ export async function saveStudyLog(data: {
     
     let nextCombo = 1;
     if (stats.lastDate) {
-      const lastDate = new Date(stats.lastDate);
-      const diffTime = today.getTime() - lastDate.getTime();
-      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      // 文字列の比較ではなく、日付オブジェクトとして「日」の差分を計算
+      const lastDateObj = new Date(stats.lastDate);
+      const todayObj = new Date(todayStr);
+      
+      // ミリ秒差分を日数に変換（誤差回避のためroundを使用）
+      const diffTime = todayObj.getTime() - lastDateObj.getTime();
+      const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
 
       if (stats.lastDate === todayStr) {
+        // 同じ日の2回目以降の学習ならコンボ維持
         nextCombo = stats.combo;
       } else if (diffDays === 1) {
+        // 前回の勉強が「昨日」ならコンボ加算
         nextCombo = stats.combo + 1;
       } else {
+        // 2日以上空いたらリセット
         nextCombo = 1;
       }
     }
 
+    // ポイント計算（5回おきのコンボボーナス 1.25倍）
     let points = data.duration;
     let isBonus = false;
     if (nextCombo > 0 && nextCombo % 5 === 0) {
@@ -134,6 +142,7 @@ export async function saveStudyLog(data: {
     const earnedMoney = Math.floor(points * unitPrice);
     const timestamp = new Date().toISOString();
 
+    // ログの保存
     await docClient.send(new PutCommand({
       TableName: "StudyQuestLogs",
       Item: {
@@ -169,7 +178,6 @@ export async function saveStudyLog(data: {
 
 /**
  * 未精算の勉強ログをすべて取得する
- * (Scanだと全件走査になるため、大規模時はQuery+Index推奨ですが、現状はScanで実装)
  */
 export async function getUnpaidLogs(userId: string) {
   try {
@@ -189,7 +197,7 @@ export async function getUnpaidLogs(userId: string) {
 }
 
 /**
- * 【追加】すべての勉強ログ（履歴用）を取得する
+ * すべての勉強ログ（履歴用）を取得する
  */
 export async function getAllStudyLogs(userId: string) {
   try {
