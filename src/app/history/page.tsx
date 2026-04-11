@@ -1,10 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getUserStats } from "@/app/actions/study"; // 既存のアクションを想定
+import { getAllStudyLogs } from "@/app/actions/study"; // 作成したアクションをインポート
 
-// 本来はDBから全履歴を取得するアクションが必要ですが、
-// ここではUIの構造と月別フィルターのロジックを中心に作成します。
 export default function HistoryPage() {
   const [allLogs, setAllLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -14,10 +12,9 @@ export default function HistoryPage() {
   useEffect(() => {
     async function loadHistory() {
       setLoading(true);
-      // ここで本来は「全履歴」を取得するAPIを叩きます
-      // 便宜上、今は空配列を入れています。
-      // const data = await getAllStudyLogs(userId); 
-      // setAllLogs(data);
+      // DynamoDBから全履歴を取得
+      const data = await getAllStudyLogs(userId);
+      setAllLogs(data);
       setLoading(false);
     }
     loadHistory();
@@ -27,9 +24,12 @@ export default function HistoryPage() {
   const filteredLogs = allLogs.filter(log => log.timestamp.startsWith(selectedMonth));
 
   // 月間サマリーの計算
-  const monthlyMinutes = filteredLogs.reduce((sum, log) => sum + log.duration, 0);
+  const monthlyMinutes = filteredLogs.reduce((sum, log) => sum + (log.duration || 0), 0);
   const monthlyMoney = filteredLogs.reduce((sum, log) => sum + (log.earnedMoney || 0), 0);
   const monthlyPoints = filteredLogs.reduce((sum, log) => sum + (log.points || 0), 0);
+
+  // 「04月」を「4月」にするための処理
+  const displayMonth = parseInt(selectedMonth.split('-')[1], 10);
 
   if (loading) return <div className="loading">これまでの記録を読み込み中...</div>;
 
@@ -48,9 +48,10 @@ export default function HistoryPage() {
           </div>
         </header>
 
-        {/* 月間サマリー（パパが欲しい情報） */}
+        {/* 月間サマリー */}
         <div className="monthly-summary">
-          <div className="summary-title">{selectedMonth.split('-')[1]}月の合計</div>
+          {/* parseIntした値を使うことで「04」が「4」になります */}
+          <div className="summary-title">{displayMonth}月の合計</div>
           <div className="summary-grid">
             <div className="summary-item">
               <span className="label">勉強時間</span>
@@ -73,7 +74,7 @@ export default function HistoryPage() {
             <div className="empty-state">この月の記録はまだないよ！🚀</div>
           ) : (
             filteredLogs.map((log, index) => (
-              <div key={index} className="history-card">
+              <div key={log.timestamp || index} className="history-card">
                 <div className="card-left">
                   <div className="date-box">
                     <span className="day">{new Date(log.timestamp).getDate()}</span>
@@ -87,6 +88,10 @@ export default function HistoryPage() {
                 <div className="card-right">
                   <div className="money-plus">+¥{log.earnedMoney}</div>
                   {log.isBonus && <div className="bonus-tag">COMBO!</div>}
+                  {/* 精算済みかどうかのステータスも一応表示 */}
+                  <div className={`status-tag ${log.status === "paid" ? "paid" : "unpaid"}`}>
+                    {log.status === "paid" ? "精算済み" : "未精算"}
+                  </div>
                 </div>
               </div>
             ))
@@ -134,6 +139,10 @@ export default function HistoryPage() {
         .money-plus { font-size: 18px; font-weight: 900; color: #FF4D6D; }
         .bonus-tag { font-size: 9px; font-weight: 900; background: #FFD93D; color: #B38F00; padding: 2px 6px; border-radius: 6px; display: inline-block; margin-top: 4px; }
         
+        .status-tag { font-size: 9px; font-weight: bold; margin-top: 4px; display: block; }
+        .status-tag.paid { color: #8ABBA6; }
+        .status-tag.unpaid { color: #FF4D6D; }
+
         .empty-state { text-align: center; padding: 40px; color: #aaa; font-weight: bold; }
         .loading { display: flex; justify-content: center; align-items: center; min-height: 100vh; font-weight: 900; color: #2D5A47; }
       `}</style>
