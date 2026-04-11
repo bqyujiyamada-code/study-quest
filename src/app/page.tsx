@@ -39,10 +39,11 @@ export default function Home() {
   const [totalMoney, setTotalMoney] = useState(0);
   const [combo, setCombo] = useState(0);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [result, setResult] = useState<{points: number, money: number, leveledUp: boolean, isBonus: boolean, rateUp: boolean} | null>(null);
 
   const userId = "daughter_01";
 
-  // ★単価設定: Lv1-3: 0.4円, Lv4-7: 0.5円, Lv8-10: 0.6円 に修正
+  // ★単価設定: Lv1-3: 0.4円, Lv4-7: 0.5円, Lv8-10: 0.6円
   const getRate = (lv: number) => (lv >= 8 ? 0.6 : lv >= 4 ? 0.5 : 0.4);
 
   useEffect(() => {
@@ -52,6 +53,8 @@ export default function Home() {
       setTotalPoints(stats.totalPoints || 0);
       setTotalMoney(stats.totalMoney || 0);
       setCombo(stats.combo || 0);
+
+      // リロード時に進行中のセッションを復元
       const stored = localStorage.getItem("currentStudy");
       if (stored) {
         const { subject, startTime } = JSON.parse(stored);
@@ -82,7 +85,6 @@ export default function Home() {
 
   const levelInfo = getLevelInfo(totalMinutes);
   const currentRate = getRate(levelInfo.lv);
-  const [result, setResult] = useState<{points: number, money: number, leveledUp: boolean, isBonus: boolean, rateUp: boolean} | null>(null);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -105,7 +107,7 @@ export default function Home() {
     if (res.success) {
       const oldLevel = levelInfo.lv;
       const addedPoints = res.points || 0;
-      const earnedMoney = res.earnedMoney || 0; // ★バックエンドで計算された金額を使用
+      const earnedMoney = res.earnedMoney || 0; 
 
       const newTotalMin = totalMinutes + elapsed;
       const newLevel = getLevelInfo(newTotalMin).lv;
@@ -130,7 +132,7 @@ export default function Home() {
       setTotalMoney(newTotalMoney);
       setCombo(newCombo);
       setMode("RESULT");
-      localStorage.removeItem("currentStudy");
+      localStorage.removeItem("currentStudy"); // 保存完了したので削除
     }
     setIsSaving(false);
   };
@@ -187,7 +189,13 @@ export default function Home() {
               <div className="subject-grid">
                 {SUBJECTS.map((s) => (
                   <button key={s.name} className="puni-button" style={{ '--btn-color': s.color, '--btn-shadow': s.shadow } as any}
-                    onClick={() => { setSubject(s.name); const now = Date.now(); setStartTime(now); setMode("TIMER"); localStorage.setItem("currentStudy", JSON.stringify({ subject: s.name, startTime: now })); }}>
+                    onClick={() => { 
+                      setSubject(s.name); 
+                      const now = Date.now(); 
+                      setStartTime(now); 
+                      setMode("TIMER"); 
+                      localStorage.setItem("currentStudy", JSON.stringify({ subject: s.name, startTime: now })); 
+                    }}>
                     <div className="puni-face"><span className="icon">{s.icon}</span><span className="name">{s.name}</span></div>
                   </button>
                 ))}
@@ -201,7 +209,12 @@ export default function Home() {
               <h2 className="current-subject">{subject}</h2>
               <div className="timer-circle"><span className="time-val">{elapsed}</span><span className="time-unit">分</span></div>
               <button className="puni-button-rect finish" onClick={() => setMode("CONFIRM")}>冒険を切り上げる 🏁</button>
-              <button className="back-link" onClick={() => { if(confirm("選びなおす？")) setMode("SELECT"); }}>← 科目を選びなおす</button>
+              <button className="back-link" onClick={() => { 
+                if(confirm("選びなおす？")) {
+                  localStorage.removeItem("currentStudy"); // 選び直し時は一時保存を消去
+                  setMode("SELECT"); 
+                }
+              }}>← 科目を選びなおす</button>
             </div>
           )}
 
