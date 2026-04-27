@@ -3,11 +3,18 @@
 import { useState } from "react";
 import { generateLogicLesson } from "../actions/logic-training";
 
-// ローディング中にくるくる回るアニメーション用のCSS
-const spinCstyle = `
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+// アニメーションとレスポンシブ用のCSS
+const globalStyles = `
+  @keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .quest-card {
+    animation: fadeIn 0.5s ease-out forwards;
   }
 `;
 
@@ -29,26 +36,26 @@ export default function LogicTrainingPage() {
 
   return (
     <main style={containerStyle}>
-      {/* アニメーションCSSの注入 */}
-      <style>{spinCstyle}</style>
+      <style>{globalStyles}</style>
 
       <header style={headerStyle}>
-        <span style={headerIconStyle}>⚔️</span>
-        <h1 style={titleStyle}>論理のちからクエスト</h1>
-        <p style={subtitleStyle}>〜 なぜならマスターになろう 〜</p>
+        <div style={badgeTopStyle}>LEVEL UP STUDY</div>
+        <h1 style={titleStyle}>
+          論理のちから<span style={{color: '#ff4757'}}>クエスト</span>
+        </h1>
+        <p style={subtitleStyle}>〜 因果関係の魔法をマスターせよ！ 〜</p>
       </header>
 
       {!lesson ? (
         <div style={inputBoxStyle}>
-          <div style={mascotStyle}>🤔</div>
-          <p style={inputLabelStyle}>今回の冒険のテーマはなに？</p>
+          <div style={mascotStyle}>💎</div>
+          <p style={inputLabelStyle}>冒険の「テーマ」を入力してね</p>
           <input 
             style={inputStyle}
-            placeholder="例：方言、宿題、ネコ派かイヌ派か"
+            placeholder="例：方言、宿題、給食"
             value={theme}
             onChange={(e) => setTheme(e.target.value)}
           />
-          <br />
           <button 
             onClick={handleStart}
             disabled={loading || !theme}
@@ -57,57 +64,63 @@ export default function LogicTrainingPage() {
               ...(loading || !theme ? buttonDisabledStyle : {})
             }}
           >
-            {loading ? (
-              <span style={loadingFlexStyle}>
-                <span style={spinnerStyle}></span>
-                魔法をかけています...
-              </span>
-            ) : (
-              "クエスト開始！ 🚀"
-            )}
+            {loading ? "MPを消費して作成中..." : "冒険をはじめる！"}
           </button>
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: "25px" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
           
-          {/* 意見のヒント・カード */}
-          <section style={opinionCardStyle}>
+          {/* 意見：ゴールドカード */}
+          <section className="quest-card" style={opinionCardStyle}>
             <div style={cardHeaderStyle}>
-              <span style={cardIconStyle}>💡</span>
-              <h2 style={cardTitleStyle}>まずは「自分の考え」を決めよう！</h2>
+              <span style={cardIconStyle}>👑</span>
+              <h2 style={cardTitleStyle}>キミの「意見」をきめよう！</h2>
             </div>
             <div style={opinionContentStyle}>
               <p style={opinionExampleStyle}>{lesson.opinion_example}</p>
               <div style={pointBoxStyle}>
-                <strong>✨ 考えるヒント：</strong>{lesson.opinion_point}
+                <span style={{marginRight: '5px'}}>📜</span> {lesson.opinion_point}
               </div>
             </div>
           </section>
 
-          {/* 作文エリアのタイトル */}
-          <h3 style={sectionDividerStyle}>⚔️ ３つの強力な「理由」の武器 ⚔️</h3>
+          <div style={dividerContainer}>
+            <div style={dividerLine}></div>
+            <span style={dividerText}>GET REWARDS</span>
+            <div style={dividerLine}></div>
+          </div>
 
-          {/* 3つの作文・カード */}
+          {/* 作文：クリスタル・エメラルド・アメジスト */}
           <div style={gridStyle}>
             {lesson.reasons.map((item: any, i: number) => (
-              <article key={i} style={compositionCardStyle}>
-                <div style={{...cardHeaderStyle, borderBottom: '2px solid #ddd', paddingBottom: '10px'}}>
-                  <span style={fileIconStyle}>📝</span>
-                  <span style={reasonTitleStyle}>作戦その {i + 1}：{item.reason_title}</span>
+              <article 
+                key={i} 
+                className="quest-card"
+                style={{
+                  ...compositionCardBase,
+                  ...getCardTheme(i),
+                  animationDelay: `${i * 0.15}s`
+                }}
+              >
+                <div style={reasonHeaderStyle}>
+                  <span style={itemIconStyle}>{getItemIcon(i)}</span>
+                  <span style={reasonTitleStyle}>理由その{i+1}: {item.reason_title}</span>
                 </div>
                 
-                <p style={compTextStyle}>{item.composition}</p>
-                
-                <div style={charCountStyle}>
-                  📏 文字数：<strong>{item.composition.length}</strong> / 105 文字
+                <div style={textBubbleStyle}>
+                  <p style={compTextStyle}>{item.composition}</p>
                 </div>
                 
-                <div style={logicCheckStyle}>
-                  <div style={checkHeaderStyle}>
-                    <span>🕵️‍♂️ Gemini先生の論理チェック</span>
+                <div style={statusRowStyle}>
+                  <div style={charCounterStyle}>
+                    LEN: <span style={{fontSize: '1.2rem'}}>{item.composition.length}</span>/105
                   </div>
-                  <p style={checkBodyStyle}>{item.logic_check}</p>
-                  <p style={hintStyle}>💡 アイデアの種：{item.reason_point}</p>
+                  <div style={logicBadgeStyle}>LOGIC OK!</div>
+                </div>
+                
+                <div style={analysisBoxStyle}>
+                  <div style={analysisTitle}>📝 じゅもんの解説</div>
+                  <p style={analysisBody}>{item.logic_check}</p>
                 </div>
               </article>
             ))}
@@ -117,7 +130,7 @@ export default function LogicTrainingPage() {
             onClick={() => { setLesson(null); setTheme(""); }}
             style={backButtonStyle}
           >
-            ↩️ 別のテーマで冒険する
+            別のクエストに挑む
           </button>
         </div>
       )}
@@ -125,136 +138,141 @@ export default function LogicTrainingPage() {
   );
 }
 
-// === かわいらしいスタイル定義 ===
+// === スタイル定義：ゲーム＆レスポンシブ特化 ===
 
-// 全体のコンテナ（背景を少し明るく）
 const containerStyle = { 
-  padding: "40px 20px", 
+  padding: "20px", 
   maxWidth: "900px", 
   margin: "0 auto", 
-  fontFamily: "'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif",
-  color: "#333",
-  backgroundColor: "#f9fcfd", // 薄い水色
-  minHeight: "100vh"
+  fontFamily: "'Inter', sans-serif",
+  backgroundColor: "#f0f2f5",
+  minHeight: "100vh",
+  boxSizing: "border-box" as const
 };
 
-// ヘッダー周り
-const headerStyle = { textAlign: "center" as const, marginBottom: "50px" };
-const headerIconStyle = { fontSize: "3rem", display: "block", marginBottom: "10px" };
-const titleStyle = { fontSize: "2.5rem", fontWeight: "900", color: "#2c3e50", margin: "0", letterSpacing: "-1px" };
-const subtitleStyle = { fontSize: "1.1rem", color: "#7f8c8d", marginTop: "5px", fontWeight: "bold" };
+const headerStyle = { textAlign: "center" as const, marginBottom: "30px", marginTop: "20px" };
+const badgeTopStyle = { 
+  display: "inline-block", 
+  backgroundColor: "#2f3542", 
+  color: "#fff", 
+  padding: "4px 12px", 
+  borderRadius: "4px", 
+  fontSize: "0.7rem", 
+  fontWeight: "bold",
+  letterSpacing: "2px",
+  marginBottom: "10px"
+};
+const titleStyle = { 
+  fontSize: "calc(1.8rem + 1.5vw)", // レスポンシブサイズ
+  fontWeight: "900", 
+  color: "#2f3542", 
+  margin: "0", 
+  lineHeight: "1.2",
+  wordBreak: "keep-all" as const, // 変な改行を防ぐ
+  overflowWrap: "anywhere" as const
+};
+const subtitleStyle = { fontSize: "0.9rem", color: "#747d8c", marginTop: "8px", fontWeight: "bold" };
 
-// 入力エリア（秘密の基地っぽいデザイン）
+// 入力画面
 const inputBoxStyle = { 
   textAlign: "center" as const, 
-  padding: "60px 20px", 
-  border: "none", 
-  borderRadius: "30px", 
+  padding: "40px 20px", 
+  borderRadius: "24px", 
   backgroundColor: "#fff", 
-  boxShadow: "0 15px 35px rgba(0,0,0,0.05)",
-  position: "relative" as const
+  boxShadow: "0 10px 25px rgba(0,0,0,0.05)"
 };
-const mascotStyle = { fontSize: "4rem", position: "absolute" as const, top: "-40px", left: "calc(50% - 2rem)", backgroundColor: "#f9fcfd", borderRadius: "50%", padding: "10px" };
-const inputLabelStyle = { fontWeight: "bold", fontSize: "1.3rem", marginBottom: "25px", color: "#34495e", marginTop: "20px" };
+const mascotStyle = { fontSize: "3rem", marginBottom: "15px" };
+const inputLabelStyle = { fontWeight: "bold", fontSize: "1.1rem", marginBottom: "20px", color: "#2f3542" };
 const inputStyle = { 
-  padding: "18px", 
-  fontSize: "1.2rem", 
-  width: "80%", 
-  maxWidth: "400px",
-  borderRadius: "15px", 
-  border: "3px solid #dfe6e9", 
-  marginBottom: "30px", 
-  outline: "none",
-  transition: "border-color 0.3s",
+  padding: "15px", 
+  fontSize: "1.1rem", 
+  width: "90%", 
+  maxWidth: "350px",
+  borderRadius: "12px", 
+  border: "2px solid #ced4da", 
+  marginBottom: "25px", 
   textAlign: "center" as const
 };
-
-// クエスト開始ボタン（ぷっくりしたデザイン）
 const buttonStyle = { 
-  padding: "20px 60px", 
-  fontSize: "1.4rem", 
-  backgroundColor: "#ff7675", // ポップな赤
+  padding: "16px 40px", 
+  fontSize: "1.1rem", 
+  backgroundColor: "#70a1ff", 
   color: "#fff", 
   border: "none", 
-  borderRadius: "50px", 
+  borderRadius: "12px", 
   cursor: "pointer", 
   fontWeight: "bold", 
-  boxShadow: "0 8px 0 #e15f5f",
-  transition: "all 0.1s",
-  transform: "translateY(0)"
+  boxShadow: "0 6px 0 #5352ed"
 };
-const buttonDisabledStyle = { backgroundColor: "#b2bec3", boxShadow: "0 8px 0 #636e72", cursor: "not-allowed" };
+const buttonDisabledStyle = { backgroundColor: "#dfe4ea", boxShadow: "0 6px 0 #a4b0be", cursor: "not-allowed" };
 
-// ローディング中のスタイル
-const loadingFlexStyle = { display: "flex", alignItems: "center", justifyContent: "center", gap: "10px" };
-const spinnerStyle = {
-  width: "20px",
-  height: "20px",
-  border: "3px solid rgba(255,255,255,0.3)",
-  borderTop: "3px solid #fff",
-  borderRadius: "50%",
-  animation: "spin 1s linear infinite"
-};
-
-// 結果エリアの共通カードスタイル
+// 共通：カードヘッダー
 const cardHeaderStyle = { display: "flex", alignItems: "center", gap: "10px", marginBottom: "15px" };
-const cardIconStyle = { fontSize: "1.5rem" };
-const cardTitleStyle = { fontSize: "1.2rem", margin: "0", color: "#2c3e50", fontWeight: "bold" };
+const cardIconStyle = { fontSize: "1.4rem" };
+const cardTitleStyle = { fontSize: "1rem", margin: "0", fontWeight: "bold", color: "#2f3542" };
 
-// 意見カード（やわらかい黄色）
+// 意見カード（ゴールド）
 const opinionCardStyle = { 
-  backgroundColor: "#fffbe0", 
-  padding: "30px", 
-  borderRadius: "25px", 
-  border: "3px solid #f1c40f",
-  boxShadow: "0 10px 20px rgba(241, 196, 15, 0.1)"
+  background: "linear-gradient(135deg, #fff9e6 0%, #fff2cc 100%)",
+  padding: "20px", 
+  borderRadius: "20px", 
+  border: "2px solid #eccc68",
+  boxShadow: "0 4px 15px rgba(236, 204, 104, 0.2)"
 };
-const opinionContentStyle = { paddingLeft: "35px" };
-const opinionExampleStyle = { fontSize: "1.4rem", fontWeight: "bold", marginBottom: "15px", color: "#000", lineHeight: "1.4" };
-const pointBoxStyle = { fontSize: "0.95rem", color: "#7f8c8d", background: "#fff", padding: "15px", borderRadius: "12px", border: "1px solid #f1c40f" };
+const opinionContentStyle = { padding: "0 5px" };
+const opinionExampleStyle = { fontSize: "1.3rem", fontWeight: "900", marginBottom: "12px", lineHeight: "1.4" };
+const pointBoxStyle = { fontSize: "0.85rem", color: "#57606f", background: "rgba(255,255,255,0.6)", padding: "10px", borderRadius: "10px" };
 
-// 作文エリアの区切り
-const sectionDividerStyle = { textAlign: "center" as const, color: "#7f8c8d", fontSize: "1rem", margin: "40px 0 20px 0", letterSpacing: "2px" };
+// 区切り線
+const dividerContainer = { display: "flex", alignItems: "center", gap: "15px", margin: "30px 0" };
+const dividerLine = { flex: 1, height: "2px", backgroundColor: "#dfe4ea" };
+const dividerText = { fontSize: "0.7rem", fontWeight: "bold", color: "#a4b0be", letterSpacing: "2px" };
 
-// 作文カードのグリッド（PCだと横並び、スマホだと縦並び）
-const gridStyle = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "25px" };
-
-// 作文カード（白ベースに青のアクセント）
-const compositionCardStyle = { 
-  border: "3px solid #2c3e50", 
-  padding: "25px", 
-  borderRadius: "25px", 
-  backgroundColor: "#fff", 
-  boxShadow: "0 10px 0 #2c3e50", // 3Dっぽい影
+// 作文カード
+const gridStyle = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "20px" };
+const compositionCardBase = { 
+  padding: "20px", 
+  borderRadius: "20px", 
+  borderWidth: "2px",
+  borderStyle: "solid",
+  backgroundColor: "#fff",
   display: "flex",
   flexDirection: "column" as const
 };
-const fileIconStyle = { fontSize: "1.2rem" };
-const reasonTitleStyle = { fontSize: "1rem", fontWeight: "bold", color: "#0070f3" };
-const compTextStyle = { fontSize: "1.2rem", lineHeight: "1.8", margin: "20px 0", fontWeight: "500", color: "#000", flexGrow: 1 };
-const charCountStyle = { textAlign: "right" as const, fontSize: "0.85rem", color: "#7f8c8d", padding: "10px 0", borderTop: "1px solid #eee" };
 
-// Gemini先生のチェックエリア（吹き出しっぽいデザイン）
-const logicCheckStyle = { 
-  marginTop: "15px", 
-  background: "#e3f2fd", // 薄い青
-  padding: "20px", 
-  borderRadius: "15px", 
-  position: "relative" as const
-};
-const checkHeaderStyle = { fontWeight: "bold", color: "#1565c0", marginBottom: "10px", fontSize: "0.9rem" };
-const checkBodyStyle = { fontSize: "0.95rem", color: "#444", margin: "0 0 10px 0", lineHeight: "1.6" };
-const hintStyle = { fontSize: "0.8rem", color: "#7f8c8d", fontStyle: "italic", borderTop: "1px solid #bbdefb", paddingTop: "8px" };
+// 作文カード内の要素
+const reasonHeaderStyle = { display: "flex", alignItems: "center", gap: "8px", marginBottom: "15px" };
+const itemIconStyle = { width: "32px", height: "32px", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.2rem", backgroundColor: "#fff" };
+const reasonTitleStyle = { fontSize: "0.9rem", fontWeight: "bold" };
+const textBubbleStyle = { background: "#fff", padding: "15px", borderRadius: "15px", border: "1px solid rgba(0,0,0,0.05)", marginBottom: "15px", flexGrow: 1 };
+const compTextStyle = { fontSize: "1.1rem", lineHeight: "1.6", fontWeight: "600", margin: 0 };
+const statusRowStyle = { display: "flex", justifyContent: "space-between", alignItems: "end", marginBottom: "15px" };
+const charCounterStyle = { fontSize: "0.7rem", color: "#747d8c", fontWeight: "bold" };
+const logicBadgeStyle = { backgroundColor: "#2ed573", color: "#fff", padding: "2px 8px", borderRadius: "4px", fontSize: "0.6rem", fontWeight: "bold" };
+const analysisBoxStyle = { background: "rgba(255,255,255,0.5)", padding: "15px", borderRadius: "12px" };
+const analysisTitle = { fontSize: "0.8rem", fontWeight: "bold", marginBottom: "5px", display: "block" };
+const analysisBody = { fontSize: "0.85rem", margin: 0, lineHeight: "1.5", color: "#2f3542" };
 
-// 戻るボタン
 const backButtonStyle = { 
   alignSelf: "center", 
   background: "none", 
   border: "none", 
-  color: "#7f8c8d", 
+  color: "#747d8c", 
   cursor: "pointer", 
   textDecoration: "underline", 
-  marginTop: "40px", 
-  fontSize: "1rem",
+  marginTop: "30px", 
+  fontSize: "0.9rem",
   fontWeight: "bold"
 };
+
+// ヘルパー関数：カードごとに色を変える
+const getCardTheme = (i: number) => {
+  const themes = [
+    { borderColor: "#70a1ff", backgroundColor: "#f1f6ff", color: "#1e90ff" }, // Crystal
+    { borderColor: "#7bed9f", backgroundColor: "#f2fff6", color: "#2ed573" }, // Emerald
+    { borderColor: "#a29bfe", backgroundColor: "#f8f7ff", color: "#6c5ce7" }, // Amethyst
+  ];
+  return themes[i % 3];
+};
+
+const getItemIcon = (i: number) => ["⚔️", "🛡️", "🏹"][i % 3];
