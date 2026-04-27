@@ -181,6 +181,7 @@ const badgeTopStyle = { display: "inline-block", color: "#fff", padding: "4px 12
 const titleStyle = { fontSize: "calc(1.5rem + 3vw)", fontWeight: "900", color: "#2f3542", margin: "0", lineHeight: "1.2" };
 const noBreakSpan = { display: "inline-block", whiteSpace: "nowrap" as const };
 const subtitleStyle = { fontSize: "0.9rem", color: "#747d8c", marginTop: "8px", fontWeight: "bold" };
+const cardHeaderStyle = { display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px", fontSize: "1rem" };
 
 // クエスト選択
 const selectSceneStyle = { textAlign: "center" as const, marginTop: "20px" };
