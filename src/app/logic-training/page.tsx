@@ -3,14 +3,10 @@
 import { useState } from "react";
 import { generateLogicLesson, TrainingMode } from "../actions/logic-training";
 
-// アニメーションと共通スタイル
 const globalStyles = `
   @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
   .quest-card { animation: fadeIn 0.5s ease-out forwards; }
-  .vs-badge { 
-    background: #2f3542; color: #fff; padding: 5px 15px; border-radius: 50px; 
-    font-weight: 900; font-style: italic; font-size: 1.2rem; margin: 0 10px;
-  }
+  .no-break { display: inline-block; white-space: nowrap; }
 `;
 
 export default function LogicTrainingPage() {
@@ -20,13 +16,14 @@ export default function LogicTrainingPage() {
   const [lesson, setLesson] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
-  // モードごとのスタイル設定
-  const isMagic = mode === "causality";
-  const themeColor = isMagic ? "#a29bfe" : "#ff7675"; // 紫 vs 赤
-  const accentColor = isMagic ? "#6c5ce7" : "#d63031";
-  const bgGradient = isMagic 
-    ? "linear-gradient(135deg, #f8f7ff 0%, #efedff 100%)" 
-    : "linear-gradient(135deg, #fffafa 0%, #ffecec 100%)";
+  // モード別デザイン設定
+  const themes = {
+    causality: { color: "#6c5ce7", dark: "#4834d4", bg: "#f8f7ff", icon: "🔮", job: "魔法使い", sub: "因果関係" },
+    contrast: { color: "#ff7675", dark: "#d63031", bg: "#fffafa", icon: "⚔️", job: "勇者", sub: "対比" },
+    "pros-cons": { color: "#f1c40f", dark: "#e67e22", bg: "#fffdf0", icon: "🥋", job: "格闘家", sub: "賛成・反対" }
+  };
+
+  const current = themes[mode];
 
   const handleStart = async () => {
     setLoading(true);
@@ -40,133 +37,104 @@ export default function LogicTrainingPage() {
     setLoading(false);
   };
 
-  const resetQuest = () => {
-    setLesson(null);
-    setTheme("");
-    setScene("SELECT");
-  };
+  const reset = () => { setLesson(null); setTheme(""); setScene("SELECT"); };
 
   return (
-    <main style={{ ...containerBase, background: bgGradient }}>
+    <main style={{ ...containerStyle, backgroundColor: current.bg }}>
       <style>{globalStyles}</style>
 
-      {/* --- ヘッダー --- */}
+      {/* ヘッダー */}
       <header style={headerStyle}>
-        <div style={{ ...badgeTopStyle, backgroundColor: accentColor }}>
-          {isMagic ? "WISE WIZARD LEVEL" : "BRAVE HERO LEVEL"}
-        </div>
-        <h1 style={titleStyle}>
-          論理のちから<span style={{ ...noBreakSpan, color: accentColor }}>クエスト</span>
-        </h1>
-        <p style={subtitleStyle}>
-          {isMagic ? "〜 因果関係の魔法をマスターせよ！ 〜" : "〜 二つの意見を戦わせて選べ！ 〜"}
-        </p>
+        <div style={{ ...badgeStyle, backgroundColor: current.dark }}>{current.job.toUpperCase()} LEVEL</div>
+        <h1 style={titleStyle}>論理のちから<span className="no-break" style={{ color: current.dark }}>クエスト</span></h1>
+        <p style={subtitleStyle}>〜 {current.sub}をマスターせよ！ 〜</p>
       </header>
 
-      {/* --- シーン1: クエスト選択 --- */}
+      {/* シーン1: 選択 */}
       {scene === "SELECT" && (
-        <div style={selectSceneStyle}>
-          <h2 style={menuTitleStyle}>挑戦する修行を選んでね！</h2>
-          <div style={menuGridStyle}>
-            <button onClick={() => { setMode("causality"); setScene("INPUT"); }} style={menuButtonStyle}>
-              <div style={iconCircle}>🔮</div>
-              <p style={menuName}>魔法使いの修行</p>
-              <span style={menuDesc}>「なぜなら」の魔法で<br/>理由をしっかりつなげる！</span>
+        <div className="quest-card" style={selectContainer}>
+          <h2 style={{ fontSize: "1.2rem", marginBottom: "30px" }}>挑戦する修行を選ぼう！</h2>
+          <div style={menuGrid}>
+            <button onClick={() => { setMode("causality"); setScene("INPUT"); }} style={{ ...menuBtn, borderColor: themes.causality.color }}>
+              <div style={{ ...iconCircle, backgroundColor: "#f3f0ff" }}>🔮</div>
+              <strong style={{ color: themes.causality.dark }}>魔法使いの修行</strong>
+              <small>「なぜなら」で理由をつなぐ</small>
             </button>
-            <button onClick={() => { setMode("contrast"); setScene("INPUT"); }} style={{ ...menuButtonStyle, borderColor: "#ff7675" }}>
-              <div style={{ ...iconCircle, backgroundColor: "#ffecec" }}>⚔️</div>
-              <p style={{ ...menuName, color: "#d63031" }}>勇者の修行</p>
-              <span style={menuDesc}>「一方で」の剣で<br/>二つの意見をくらべる！</span>
+            <button onClick={() => { setMode("contrast"); setScene("INPUT"); }} style={{ ...menuBtn, borderColor: themes.contrast.color }}>
+              <div style={{ ...iconCircle, backgroundColor: "#fff5f5" }}>⚔️</div>
+              <strong style={{ color: themes.contrast.dark }}>勇者の修行</strong>
+              <small>「一方で」で違いをくらべる</small>
+            </button>
+            <button onClick={() => { setMode("pros-cons"); setScene("INPUT"); }} style={{ ...menuBtn, borderColor: themes["pros-cons"].color }}>
+              <div style={{ ...iconCircle, backgroundColor: "#fffdeb" }}>🥋</div>
+              <strong style={{ color: themes["pros-cons"].dark }}>格闘家の修行</strong>
+              <small>賛成・反対で意見をぶつける</small>
             </button>
           </div>
         </div>
       )}
 
-      {/* --- シーン2: テーマ入力 --- */}
+      {/* シーン2: 入力 */}
       {scene === "INPUT" && (
-        <div className="quest-card" style={inputBoxStyle}>
-          <div style={mascotStyle}>{isMagic ? "🧙‍♀️" : "🛡️"}</div>
-          <p style={inputLabelStyle}>
-            {isMagic ? "魔法をかけるテーマは何にする？" : "戦わせるテーマを入力してね！"}
-          </p>
+        <div className="quest-card" style={inputCard}>
+          <div style={{ fontSize: "4rem", marginBottom: "10px" }}>{current.icon}</div>
+          <p style={{ fontWeight: "bold", marginBottom: "20px" }}>{current.job}のテーマを入力してね</p>
           <input 
-            style={inputStyle}
-            placeholder={isMagic ? "例：宿題、方言" : "例：試合の目標"}
+            style={inputField}
+            placeholder={mode === "pros-cons" ? "例：事前に情報を得るべきか" : "テーマを入力..."}
             value={theme}
             onChange={(e) => setTheme(e.target.value)}
           />
           <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
-            <button onClick={() => setScene("SELECT")} style={backSmallStyle}>もどる</button>
-            <button onClick={handleStart} disabled={loading || !theme} style={{ ...buttonStyle, backgroundColor: themeColor, boxShadow: `0 6px 0 ${accentColor}` }}>
-              {loading ? "MP消費中..." : "修行開始！"}
+            <button onClick={() => setScene("SELECT")} style={cancelBtn}>やめる</button>
+            <button onClick={handleStart} disabled={loading || !theme} style={{ ...startBtn, backgroundColor: current.color, boxShadow: `0 6px 0 ${current.dark}` }}>
+              {loading ? "精神統一中..." : "修行開始！"}
             </button>
           </div>
         </div>
       )}
 
-      {/* --- シーン3: 結果表示 --- */}
+      {/* シーン3: 結果 */}
       {scene === "RESULT" && lesson && (
         <div style={{ display: "flex", flexDirection: "column", gap: "25px" }}>
           
-          {/* 因果関係モード（魔法使い）の表示 */}
-          {mode === "causality" && (
-            <>
-              <section className="quest-card" style={opinionCardStyle}>
-                <div style={cardHeaderStyle}><span>🔮</span> <strong>魔法の意見：</strong></div>
-                <p style={mainOpinionText}>{lesson.opinion_example}</p>
-                <div style={hintBoxStyle}>✨ 魔法のコツ：{lesson.opinion_point}</div>
-              </section>
-              <div style={gridStyle}>
-                {lesson.reasons.map((item: any, i: number) => (
-                  <article key={i} className="quest-card" style={{ ...cardBase, borderColor: accentColor }}>
-                    <div style={reasonTag}>📜 呪文その{i+1}: {item.reason_title}</div>
-                    <p style={compText}>{item.composition}</p>
-                    <div style={analysisArea}>
-                      <small style={{ color: accentColor, fontWeight: "bold" }}>📖 じゅもんの解説</small>
-                      <p style={analysisText}>{item.logic_check}</p>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            </>
-          )}
+          {/* 【共通】トップ：教え/ヒント */}
+          <section className="quest-card" style={{ ...topCard, borderColor: current.color }}>
+            <div style={cardHeader}><span style={{ fontSize: "1.5rem" }}>{current.icon}</span> <strong>{current.job}の極意</strong></div>
+            <p style={mainText}>{mode === "pros-cons" ? theme : (lesson.opinion_example || lesson.opinion_a + " vs " + lesson.opinion_b)}</p>
+            <div style={teachingBox}>{lesson.teaching_point || lesson.opinion_point}</div>
+          </section>
 
-          {/* 対比モード（勇者）の表示 */}
-          {mode === "contrast" && (
-            <>
-              <section className="quest-card" style={vsCardStyle}>
-                <div style={vsContainer}>
-                  <div style={sideA}>
-                    <small style={sideLabel}>意見 A</small>
-                    <p style={sideText}>{lesson.opinion_a}</p>
-                  </div>
-                  <div className="vs-badge">VS</div>
-                  <div style={sideB}>
-                    <small style={sideLabel}>意見 B</small>
-                    <p style={sideText}>{lesson.opinion_b}</p>
-                  </div>
+          {/* 【格闘家モード専用】対立の視点（乱舞） */}
+          {mode === "pros-cons" && (
+            <div style={gridStyle}>
+              {lesson.clash_points.map((p: any, i: number) => (
+                <div key={i} className="quest-card" style={clashCard}>
+                  <div style={clashTitle}>🥊 攻防の視点：{p.point_title}</div>
+                  <div style={clashBox}><span style={tagPros}>賛成側</span> {p.pros_view}</div>
+                  <div style={clashBox}><span style={tagCons}>反対側</span> {p.cons_view}</div>
                 </div>
-                <div style={teachingBox}>🛡️ 勇者の教え：{lesson.teaching_point}</div>
-              </section>
-
-              <div style={gridStyle}>
-                {lesson.essays.map((item: any, i: number) => (
-                  <article key={i} className="quest-card" style={{ ...cardBase, borderColor: accentColor }}>
-                    <div style={{ ...reasonTag, backgroundColor: "#fff5f5", color: accentColor }}>
-                      ⚔️ 戦術 {i === 0 ? "A" : "B"}: {item.side}
-                    </div>
-                    <p style={compText}>{item.composition}</p>
-                    <div style={{ ...analysisArea, backgroundColor: "#fffafa" }}>
-                      <small style={{ color: accentColor, fontWeight: "bold" }}>🤺 戦じゅつの分析</small>
-                      <p style={analysisText}>{item.logic_check}</p>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            </>
+              ))}
+            </div>
           )}
 
-          <button onClick={resetQuest} style={resetButtonStyle}>↩️ 別のクエストに挑む</button>
+          {/* 【全モード共通】作文リザルト */}
+          <div style={gridStyle}>
+            {(lesson.essays || lesson.reasons).map((item: any, i: number) => (
+              <article key={i} className="quest-card" style={{ ...essayCard, borderColor: current.dark }}>
+                <div style={{ ...essayTag, backgroundColor: current.bg, color: current.dark }}>
+                  {mode === "causality" ? `📜 呪文 ${i+1}` : `🔥 演武：${item.side || item.reason_title}`}
+                </div>
+                <p style={essayText}>{item.composition}</p>
+                <div style={{ ...analysisArea, backgroundColor: current.bg }}>
+                  <small style={{ fontWeight: "bold", color: current.dark }}>🥊 {current.job}の分析</small>
+                  <p style={analysisBody}>{item.logic_check}</p>
+                </div>
+              </article>
+            ))}
+          </div>
+
+          <button onClick={reset} style={backBtn}>↩️ 別のクエストに挑む</button>
         </div>
       )}
     </main>
@@ -174,60 +142,40 @@ export default function LogicTrainingPage() {
 }
 
 // === スタイル定義 ===
-
-const containerBase = { padding: "20px", maxWidth: "900px", margin: "0 auto", minHeight: "100vh", fontFamily: "sans-serif" };
+const containerStyle = { padding: "20px", maxWidth: "900px", margin: "0 auto", minHeight: "100vh", fontFamily: "sans-serif", boxSizing: "border-box" as const };
 const headerStyle = { textAlign: "center" as const, marginBottom: "30px" };
-const badgeTopStyle = { display: "inline-block", color: "#fff", padding: "4px 12px", borderRadius: "4px", fontSize: "0.7rem", fontWeight: "bold", letterSpacing: "2px", marginBottom: "10px" };
+const badgeStyle = { display: "inline-block", color: "#fff", padding: "4px 12px", borderRadius: "4px", fontSize: "0.7rem", fontWeight: "bold", letterSpacing: "2px", marginBottom: "10px" };
 const titleStyle = { fontSize: "calc(1.5rem + 3vw)", fontWeight: "900", color: "#2f3542", margin: "0", lineHeight: "1.2" };
-const noBreakSpan = { display: "inline-block", whiteSpace: "nowrap" as const };
 const subtitleStyle = { fontSize: "0.9rem", color: "#747d8c", marginTop: "8px", fontWeight: "bold" };
-const cardHeaderStyle = { display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px", fontSize: "1rem" };
 
-// クエスト選択
-const selectSceneStyle = { textAlign: "center" as const, marginTop: "20px" };
-const menuTitleStyle = { fontSize: "1.2rem", color: "#2f3542", marginBottom: "25px" };
-const menuGridStyle = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "20px" };
-const menuButtonStyle = { 
-  padding: "30px 20px", borderRadius: "24px", border: "4px solid #a29bfe", backgroundColor: "#fff", cursor: "pointer",
-  transition: "transform 0.2s", boxShadow: "0 10px 20px rgba(0,0,0,0.05)"
-};
-const iconCircle = { 
-  width: "80px", height: "80px", borderRadius: "50%", backgroundColor: "#f8f7ff", margin: "0 auto 15px",
-  display: "flex", alignItems: "center", justifyContent: "center", fontSize: "3rem"
-};
-const menuName = { fontSize: "1.4rem", fontWeight: "900", margin: "0 0 10px 0", color: "#6c5ce7" };
-const menuDesc = { fontSize: "0.85rem", color: "#747d8c", lineHeight: "1.5" };
+// シーン別
+const selectContainer = { textAlign: "center" as const, padding: "20px" };
+const menuGrid = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "20px" };
+const menuBtn = { padding: "30px", borderRadius: "24px", backgroundColor: "#fff", border: "4px solid", cursor: "pointer", display: "flex", flexDirection: "column" as const, alignItems: "center", gap: "10px" };
+const iconCircle = { width: "70px", height: "70px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "2.5rem" };
+const inputCard = { textAlign: "center" as const, padding: "40px 20px", backgroundColor: "#fff", borderRadius: "24px", boxShadow: "0 10px 30px rgba(0,0,0,0.05)" };
+const inputField = { padding: "15px", fontSize: "1.1rem", width: "90%", maxWidth: "400px", borderRadius: "12px", border: "2px solid #ddd", marginBottom: "20px", textAlign: "center" as const };
+const startBtn = { padding: "15px 40px", fontSize: "1.1rem", color: "#fff", border: "none", borderRadius: "12px", cursor: "pointer", fontWeight: "bold" };
+const cancelBtn = { background: "none", border: "none", color: "#999", textDecoration: "underline", cursor: "pointer" };
 
-// 入力画面
-const inputBoxStyle = { textAlign: "center" as const, padding: "50px 20px", borderRadius: "24px", backgroundColor: "#fff", boxShadow: "0 10px 25px rgba(0,0,0,0.05)" };
-const mascotStyle = { fontSize: "4rem", marginBottom: "10px" };
-const inputLabelStyle = { fontWeight: "bold", fontSize: "1.1rem", marginBottom: "20px" };
-const inputStyle = { padding: "15px", fontSize: "1.1rem", width: "90%", maxWidth: "350px", borderRadius: "12px", border: "2px solid #ced4da", marginBottom: "25px", textAlign: "center" as const };
-const buttonStyle = { padding: "16px 40px", fontSize: "1.1rem", color: "#fff", border: "none", borderRadius: "12px", cursor: "pointer", fontWeight: "bold" };
-const backSmallStyle = { background: "none", border: "none", color: "#747d8c", cursor: "pointer", textDecoration: "underline" };
-
-// 結果：因果関係
-const opinionCardStyle = { backgroundColor: "#fffbe0", padding: "20px", borderRadius: "20px", border: "2px solid #f1c40f" };
-const mainOpinionText = { fontSize: "1.3rem", fontWeight: "900", margin: "10px 0" };
-const hintBoxStyle = { fontSize: "0.85rem", color: "#7f8c8d", background: "#fff", padding: "10px", borderRadius: "10px" };
-
-// 結果：対比（VSカード）
-const vsCardStyle = { 
-  background: "linear-gradient(135deg, #fff 0%, #f9f9f9 100%)", padding: "20px", borderRadius: "24px", border: "3px solid #2f3542",
-  boxShadow: "0 10px 20px rgba(0,0,0,0.1)"
-};
-const vsContainer = { display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", marginBottom: "15px" };
-const sideA = { flex: 1, textAlign: "center" as const };
-const sideB = { flex: 1, textAlign: "center" as const };
-const sideLabel = { fontSize: "0.7rem", fontWeight: "bold", color: "#ff7675", textTransform: "uppercase" as const };
-const sideText = { fontSize: "1.1rem", fontWeight: "900", margin: "5px 0" };
-const teachingBox = { fontSize: "0.85rem", color: "#2f3542", background: "#eee", padding: "12px", borderRadius: "12px", textAlign: "center" as const };
-
-// 共通カード
+// リザルト
+const topCard = { padding: "25px", borderRadius: "24px", backgroundColor: "#fff", border: "3px solid", marginBottom: "10px" };
+const cardHeader = { display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px" };
+const mainText = { fontSize: "1.4rem", fontWeight: "900", margin: "10px 0", lineHeight: "1.4" };
+const teachingBox = { fontSize: "0.85rem", color: "#666", background: "#f5f5f5", padding: "12px", borderRadius: "12px" };
 const gridStyle = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "20px" };
-const cardBase = { padding: "20px", borderRadius: "24px", backgroundColor: "#fff", border: "3px solid", display: "flex", flexDirection: "column" as const };
-const reasonTag = { fontSize: "0.85rem", fontWeight: "bold", padding: "5px 12px", borderRadius: "8px", alignSelf: "flex-start" as const, marginBottom: "15px", backgroundColor: "#f8f7ff" };
-const compText = { fontSize: "1.1rem", lineHeight: "1.7", fontWeight: "600", flexGrow: 1 };
-const analysisArea = { marginTop: "15px", backgroundColor: "#f8f7ff", padding: "15px", borderRadius: "15px" };
-const analysisText = { fontSize: "0.85rem", margin: "5px 0 0 0", color: "#2f3542", lineHeight: "1.5" };
-const resetButtonStyle = { alignSelf: "center", background: "none", border: "none", color: "#747d8c", cursor: "pointer", textDecoration: "underline", padding: "20px" };
+
+// 格闘家専用
+const clashCard = { padding: "20px", backgroundColor: "#fff", borderRadius: "20px", border: "2px solid #2f3542", boxShadow: "5px 5px 0 #2f3542" };
+const clashTitle = { fontWeight: "bold", fontSize: "0.9rem", marginBottom: "12px", color: "#e67e22" };
+const clashBox = { fontSize: "0.85rem", marginBottom: "8px", lineHeight: "1.5" };
+const tagPros = { backgroundColor: "#f1c40f", color: "#000", padding: "2px 6px", borderRadius: "4px", fontSize: "0.7rem", fontWeight: "bold", marginRight: "5px" };
+const tagCons = { backgroundColor: "#2f3542", color: "#fff", padding: "2px 6px", borderRadius: "4px", fontSize: "0.7rem", fontWeight: "bold", marginRight: "5px" };
+
+// 作文
+const essayCard = { padding: "20px", borderRadius: "24px", backgroundColor: "#fff", border: "3px solid", display: "flex", flexDirection: "column" as const };
+const essayTag = { fontSize: "0.8rem", fontWeight: "bold", padding: "4px 12px", borderRadius: "8px", alignSelf: "flex-start" as const, marginBottom: "15px" };
+const essayText = { fontSize: "1.1rem", lineHeight: "1.7", fontWeight: "600", flexGrow: 1, margin: 0 };
+const analysisArea = { marginTop: "15px", padding: "15px", borderRadius: "15px" };
+const analysisBody = { fontSize: "0.85rem", margin: "5px 0 0 0", lineHeight: "1.5" };
+const backBtn = { alignSelf: "center", background: "none", border: "none", color: "#999", textDecoration: "underline", cursor: "pointer", padding: "20px" };
