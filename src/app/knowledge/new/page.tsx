@@ -48,7 +48,7 @@ export default function KnowledgeEntryPage() {
       const formData = new FormData();
       formData.append("userId", userId);
       formData.append("subject", subject);
-      formData.append("title", aiResult.title);
+      formData.append("title", aiResult.title || title);
       formData.append("intro", aiResult.intro || "");
       formData.append("content", JSON.stringify(aiResult.content));
 
