@@ -77,7 +77,7 @@ export default function KnowledgeListPage() {
             style={{ width: "100%", padding: "12px", boxSizing: "border-box" }}
           />
           {searchQuery && (
-            <button onClick={() => setSearchQuery("")} style={{ shrink: 0 }}>クリア</button>
+            <button onClick={() => setSearchQuery("")} style={{ flexShrink: 0 }}>クリア</button>
           )}
         </div>
 
