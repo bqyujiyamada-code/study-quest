@@ -15,7 +15,7 @@ const awsCredentials = {
 const docClient = DynamoDBDocumentClient.from(new DynamoDBClient(awsCredentials));
 const s3Client = new S3Client(awsCredentials);
 
-const TABLE_NAME = "study-quest-knowledge";
+const TABLE_NAME = "study_quest-knowledge";
 const GSI_NAME = "subject-createdAt-index";
 const BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME || "study-quest-assets";
 
