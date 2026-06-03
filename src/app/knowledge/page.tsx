@@ -237,7 +237,7 @@ export default function KnowledgeListPage() {
             {/* 1. AI先生からの導入語りかけ */}
             <div style={{ backgroundColor: "#fdf2f8", padding: "16px", borderRadius: "12px", marginBottom: "20px", borderLeft: "4px solid #ec4899" }}>
               <p style={{ margin: 0, fontSize: "0.95rem", color: "#9d174d", lineHeight: "1.5", fontStyle: "italic" }}>
-                {selectedCard.content.intro}
+                {selectedCard.intro}
               </p>
             </div>
 
