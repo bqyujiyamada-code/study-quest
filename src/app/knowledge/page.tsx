@@ -138,7 +138,7 @@ export default function KnowledgeListPage() {
 
               <h3>{card.title}</h3>
               <p style={{ fontSize: "0.8rem", color: "#666" }}>{card.titleKana}</p>
-              <p style={{ fontSize: "0.8rem", italic: "true" }}>型: {card.content.typicalPatternName}</p>
+              <p style={{ fontSize: "0.8rem", fontStyle: "italic" }}>型: {card.content.typicalPatternName}</p>
               <p>{card.content.essence}</p>
 
               <div style={{ backgroundColor: "#f0f4f8", padding: "8px", marginTop: "8px" }}>
