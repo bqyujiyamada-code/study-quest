@@ -56,32 +56,36 @@ export default function KnowledgeListPage() {
   });
 
   return (
-    <div>
-      <div>
+    /* ★全体を中央寄せにし、左右にスマホ用の余白（padding）を確保 */
+    <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "16px", boxSizing: "border-box" }}>
+      
+      {/* ヘッダーエリアも中央寄せに */}
+      <div style={{ textAlign: "center", marginBottom: "32px" }}>
         <h1>ナレッジ神殿</h1>
-        <p>これまでに集めた、頭の「ひらめきロジック」コレクション</p>
+        <p style={{ color: "#666" }}>これまでに集めた、頭の「ひらめきロジック」コレクション</p>
       </div>
 
       {/* 検索・絞り込み操作エリア */}
-      <div>
-        {/* 検索窓 */}
-        <div>
+      <div style={{ maxWidth: "600px", margin: "0 auto 32px auto", textAlign: "center" }}>
+        {/* 検索窓（幅いっぱいに広げる） */}
+        <div style={{ display: "flex", gap: "8px", justifyContent: "center" }}>
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="さがしたい言葉を入力してね（ひらがなでもOK！）"
+            style={{ width: "100%", padding: "12px", boxSizing: "border-box" }}
           />
           {searchQuery && (
-            <button onClick={() => setSearchQuery("")}>クリア</button>
+            <button onClick={() => setSearchQuery("")} style={{ shrink: 0 }}>クリア</button>
           )}
         </div>
 
-        {/* 教科切り替えタブ */}
-        <div style={{ marginTop: "10px" }}>
+        {/* 教科切り替えタブ（スマホで溢れたら折り返すように flex-wrap を指定） */}
+        <div style={{ marginTop: "16px", display: "flex", flexWrap: "wrap", gap: "8px", justifyContent: "center" }}>
           <button
             onClick={() => setSelectedSubject("all")}
-            style={{ fontWeight: selectedSubject === "all" ? "bold" : "normal", marginRight: "8px" }}
+            style={{ fontWeight: selectedSubject === "all" ? "bold" : "normal", padding: "6px 12px" }}
           >
             すべて
           </button>
@@ -94,7 +98,7 @@ export default function KnowledgeListPage() {
             <button
               key={tab.id}
               onClick={() => setSelectedSubject(tab.id as SubjectType)}
-              style={{ fontWeight: selectedSubject === tab.id ? "bold" : "normal", marginRight: "8px" }}
+              style={{ fontWeight: selectedSubject === tab.id ? "bold" : "normal", padding: "6px 12px" }}
             >
               {tab.label}
             </button>
@@ -102,17 +106,20 @@ export default function KnowledgeListPage() {
         </div>
       </div>
 
-      {/* カード一覧エリア */}
+      {/* カード一覧エリア（ココが重要！スマホなら1列、PCなら並ぶように flex で調整） */}
       {isLoading ? (
-        <div>
-          <p>ナレッジカードを展開中...</p>
-        </div>
+        <div style={{ textAlign: "center" }}><p>ナレッジカードを展開中...</p></div>
       ) : filteredCards.length === 0 ? (
-        <div style={{ marginTop: "20px" }}>
-          <p>あてはまるナレッジカードが見つからないよ。</p>
+        <div style={{ textAlign: "center", marginTop: "20px" }}>
+          <p style={{ color: "#999" }}>あてはまるナレッジカードが見つからないよ。</p>
         </div>
       ) : (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "16px", marginTop: "20px" }}>
+        <div style={{ 
+          display: "flex", 
+          flexWrap: "wrap", 
+          gap: "16px", 
+          justifyContent: "center" /* カードを中央寄せに並べる */
+        }}>
           {filteredCards.map((card) => (
             <div
               key={card.cardId}
@@ -120,30 +127,35 @@ export default function KnowledgeListPage() {
               style={{
                 border: "1px solid #ccc",
                 padding: "16px",
-                width: "280px",
-                cursor: "pointer"
+                /* スマホ時は横幅いっぱい（100%）、PCでは大体3台並ぶように flex-basis を調整 */
+                width: "100%",
+                maxWidth: "340px", 
+                boxSizing: "border-box",
+                cursor: "pointer",
+                borderRadius: "12px", /* 少し角丸にして今風に */
+                backgroundColor: "#fff"
               }}
             >
               {/* 画像プレビュー */}
               {card.imageUrl && (
-                <div>
-                  <img src={card.imageUrl} alt={card.title} style={{ maxWidth: "100%", height: "auto" }} />
+                <div style={{ textAlign: "center", marginBottom: "12px", backgroundColor: "#f9f9f9", borderRadius: "8px", padding: "8px" }}>
+                  <img src={card.imageUrl} alt={card.title} style={{ maxWidth: "100%", maxHeight: "150px", objectFit: "contain" }} />
                 </div>
               )}
 
-              <div>
-                <span>【{card.subject}】</span>
-                <span>{card.content.degreeOfAppearance}</span>
+              <div style={{ display: "flex", justifyContent: "between", fontSize: "0.8rem", color: "#666", marginBottom: "4px" }}>
+                <span>【{card.subject === "math" ? "算数" : card.subject === "japanese" ? "国語" : card.subject === "science" ? "理科" : "社会"}】</span>
+                <span style={{ marginLeft: "auto" }}>{card.content.degreeOfAppearance}</span>
               </div>
 
-              <h3>{card.title}</h3>
-              <p style={{ fontSize: "0.8rem", color: "#666" }}>{card.titleKana}</p>
-              <p style={{ fontSize: "0.8rem", fontStyle: "italic" }}>型: {card.content.typicalPatternName}</p>
-              <p>{card.content.essence}</p>
+              <h3 style={{ margin: "4px 0" }}>{card.title}</h3>
+              <p style={{ fontSize: "0.75rem", color: "#999", margin: "2px 0" }}>{card.titleKana}</p>
+              <p style={{ fontSize: "0.75rem", fontStyle: "italic", color: "#666", margin: "4px 0" }}>型: {card.content.typicalPatternName}</p>
+              <p style={{ fontSize: "0.9rem", color: "#333", lineHeight: "1.4" }}>{card.content.essence}</p>
 
-              <div style={{ backgroundColor: "#f0f4f8", padding: "8px", marginTop: "8px" }}>
-                <strong>武器: </strong>
-                <span>{card.content.weapon}</span>
+              <div style={{ backgroundColor: "#f0f4f8", padding: "8px", marginTop: "12px", borderRadius: "8px" }}>
+                <strong style={{ fontSize: "0.8rem", color: "#1e3a8a" }}>⚔️ 武器: </strong>
+                <span style={{ fontSize: "0.85rem", fontWeight: "bold", color: "#1e3a8a" }}>{card.content.weapon}</span>
               </div>
             </div>
           ))}

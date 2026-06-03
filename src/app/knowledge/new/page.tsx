@@ -77,86 +77,118 @@ export default function KnowledgeEntryPage() {
   };
 
   return (
-    <div>
-      <h1>ナレッジカード錬成所 (エントリー)</h1>
+    /* ★全体をマックス600pxに制限し、中央寄せ＆左右にスマホ用の余白を確保 */
+    <div style={{ maxWidth: "600px", margin: "0 auto", padding: "16px", boxSizing: "border-box" }}>
+      
+      <h1 style={{ textAlign: "center", marginBottom: "24px" }}>
+        🔮 ナレッジカード錬成所
+      </h1>
 
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+        
         {/* 教科選択 */}
         <div>
-          <label>どの教科のナレッジ？</label>
-          <div>
+          <label style={{ display: "block", fontWeight: "bold", marginBottom: "8px" }}>どの教科のナレッジ？</label>
+          {/* スマホでもタップしやすいように flex-wrap と十分な余白を確保 */}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
             {(["math", "japanese", "science", "society"] as const).map((sub) => (
               <button
                 key={sub}
                 type="button"
                 onClick={() => setSubject(sub)}
                 style={{
+                  padding: "10px 16px",
+                  fontSize: "0.9rem",
                   fontWeight: subject === sub ? "bold" : "normal",
-                  marginRight: "8px"
+                  cursor: "pointer",
+                  borderRadius: "8px",
+                  border: "1px solid #ccc",
+                  backgroundColor: subject === sub ? "#e0e7ff" : "#fff",
+                  flexGrow: 1, /* スマホ画面でボタンが横いっぱいに綺麗に広がるように */
+                  minWidth: "70px",
+                  textAlign: "center"
                 }}
               >
-                {sub === "math" && "算数"}
-                {sub === "japanese" && "国語"}
-                {sub === "science" && "理科"}
-                {sub === "society" && "社会"}
+                {sub === "math" && "📐 算数"}
+                {sub === "japanese" && "📖 国語"}
+                {sub === "science" && "🧪 理科"}
+                {sub === "society" && "🌍 社会"}
               </button>
             ))}
           </div>
         </div>
 
         {/* タイトル入力 */}
-        <div>
-          <label>例題のタイトル</label>
+        <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+          <label style={{ fontWeight: "bold" }}>例題のタイトル</label>
           <input
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="例: 円すいのくりぬき回転体"
+            style={{ width: "100%", padding: "12px", boxSizing: "border-box", borderRadius: "8px", border: "1px solid #ccc" }}
           />
         </div>
 
         {/* 画像アップロード欄 */}
-        <div>
-          <label>問題の図形・画像 (任意)</label>
+        <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+          <label style={{ fontWeight: "bold" }}>問題の図形・画像 (任意)</label>
           <input
             type="file"
             accept="image/*"
             onChange={handleFileChange}
+            style={{ width: "100%", padding: "8px 0", boxSizing: "border-box" }}
           />
         </div>
 
         {/* 例題入力 */}
-        <div>
-          <label>問題文（例題）</label>
+        <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+          <label style={{ fontWeight: "bold" }}>問題文（例題）</label>
           <textarea
             rows={4}
             value={example}
             onChange={(e) => setExample(e.target.value)}
-            placeholder="テキストの問題文を入力してね"
+            placeholder="テキストの問題文をそのまま入力してね"
+            style={{ width: "100%", padding: "12px", boxSizing: "border-box", borderRadius: "8px", border: "1px solid #ccc", fontSize: "0.9rem" }}
           />
         </div>
 
         {/* 回答例入力 */}
-        <div>
-          <label>テキストの回答例（式やルート）</label>
+        <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+          <label style={{ fontWeight: "bold" }}>テキストの回答例（式やルート）</label>
           <textarea
             rows={4}
             value={answerExample}
             onChange={(e) => setAnswerExample(e.target.value)}
-            placeholder="テキストの解説の式や、正解の記述ルートを入力してね"
+            placeholder="テキストに載っている解説の式や、正解の記述ルートを入力してね"
+            style={{ width: "100%", padding: "12px", boxSizing: "border-box", borderRadius: "8px", border: "1px solid #ccc", fontSize: "0.9rem" }}
           />
         </div>
 
         {/* ステータス表示 */}
         {statusMessage && (
-          <div>
-            <p>{statusMessage}</p>
+          <div style={{ padding: "12px", backgroundColor: "#f0f4f8", borderRadius: "8px", textAlign: "center" }}>
+            <p style={{ margin: 0, fontSize: "0.9rem", color: "#333", fontWeight: "medium" }}>{statusMessage}</p>
           </div>
         )}
 
         {/* 送信ボタン */}
-        <button type="submit" disabled={isLoading}>
-          {isLoading ? "錬成中..." : "ナレッジカードを生成する"}
+        <button 
+          type="submit" 
+          disabled={isLoading}
+          style={{
+            padding: "16px",
+            fontSize: "1.1rem",
+            fontWeight: "bold",
+            color: "#fff",
+            backgroundColor: isLoading ? "#aaa" : "#4f46e5",
+            border: "none",
+            borderRadius: "8px",
+            cursor: isLoading ? "not-allowed" : "pointer",
+            marginTop: "8px"
+          }}
+        >
+          {isLoading ? "🧙‍♂️ 錬成中..." : "✨ ナレッジカードを生成する"}
         </button>
       </form>
     </div>
