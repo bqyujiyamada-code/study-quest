@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getKnowledgeCards } from "@/app/actions/knowledge";
+import { getKnowledgeCards, deleteKnowledgeCard } from "@/app/actions/knowledge";
 import { SubjectType } from "@/app/actions/knowledge-generator";
 import pako from "pako";
 
@@ -24,9 +24,10 @@ export default function KnowledgeListPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCard, setSelectedCard] = useState<CardItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   /**
-   * 圧縮されたBase64文字列データを、ブラウザ側で元のJSONオブジェクトに解凍する関数
+   * 圧縮されたBase64文字列データを、ブラウザ側で元のJSONオブジェクトに解凍する
    */
   const getDecompressedContent = (card: CardItem) => {
     if (typeof card.content === "string") {
@@ -51,7 +52,6 @@ export default function KnowledgeListPage() {
     setIsLoading(true);
     const result = await getKnowledgeCards(userId, subjectTag);
     if (result.success) {
-      // 読み込み時にあらかじめ全件一括解凍
       const decompressedItems = (result.items as CardItem[]).map(item => ({
         ...item,
         content: getDecompressedContent(item)
@@ -67,16 +67,36 @@ export default function KnowledgeListPage() {
     fetchCards(selectedSubject === "all" ? undefined : selectedSubject);
   }, [selectedSubject]);
 
-  // ★【劇的改善】絶対にクラッシュさせない最強のフィルターロジック
+  // 連動削除ハンドラー
+  const handleDelete = async (cardId: string, cardTitle: string) => {
+    const confirmed = window.confirm(`「${cardTitle}」を神殿から削除してもよろしいですか？\n※この操作は取り消せません。`);
+    if (!confirmed) return;
+
+    setIsDeleting(true);
+    try {
+      const result = await deleteKnowledgeCard(userId, cardId);
+      if (result.success) {
+        alert("ナレッジカードを削除しました。");
+        setSelectedCard(null); 
+        fetchCards(selectedSubject === "all" ? undefined : selectedSubject);
+      } else {
+        alert(result.error || "削除に失敗しちゃいました。");
+      }
+    } catch (error) {
+      alert("通信エラーが発生しました。");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // どんなデータ構造でも絶対にクラッシュさせないフィルターロジック
   const filteredCards = cards.filter((card) => {
     if (!searchQuery.trim()) return true;
     const query = searchQuery.toLowerCase().trim();
     
-    // card本体の文字列を安全に抽出（null/undefined 対策）
     const title = (card.title || "").toLowerCase();
     const titleKana = (card.titleKana || "").toLowerCase();
 
-    // contentの中身を徹底的に安全チェック（文字列型である場合のみtoLowerCaseをかける）
     const weapon = (card.content && typeof card.content.weapon === "string") 
       ? card.content.weapon.toLowerCase() 
       : "";
@@ -184,10 +204,10 @@ export default function KnowledgeListPage() {
 
       {/* 詳細表示モーダルエリア（極・スマホ最適化版） */}
       {selectedCard && selectedCard.content && (
-        <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundColor: "rgba(15, 23, 42, 0.6)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000, padding: "12px", boxSizing: "border-box" }} onClick={() => setSelectedCard(null)}>
+        <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundColor: "rgba(15, 23, 42, 0.6)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000, padding: "12px", boxSizing: "border-box" }} onClick={() => !isDeleting && setSelectedCard(null)}>
           <div style={{ backgroundColor: "#fff", borderRadius: "20px", width: "100%", maxWidth: "600px", maxHeight: "92vh", overflowY: "auto", padding: "20px", boxSizing: "border-box", position: "relative", boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)" }} onClick={(e) => e.stopPropagation()}>
             
-            <button onClick={() => setSelectedCard(null)} style={{ position: "absolute", top: "14px", right: "14px", padding: "8px 14px", cursor: "pointer", borderRadius: "30px", border: "1px solid #e5e7eb", backgroundColor: "#f3f4f6", fontSize: "0.85rem", fontWeight: "bold", color: "#4b5563" }}>
+            <button onClick={() => setSelectedCard(null)} disabled={isDeleting} style={{ position: "absolute", top: "14px", right: "14px", padding: "8px 14px", cursor: isDeleting ? "not-allowed" : "pointer", borderRadius: "30px", border: "1px solid #e5e7eb", backgroundColor: "#f3f4f6", fontSize: "0.85rem", fontWeight: "bold", color: "#4b5563" }}>
               ✕ とじる
             </button>
 
@@ -311,7 +331,7 @@ export default function KnowledgeListPage() {
 
             <div style={{ display: "flex", flexDirection: "column", gap: "12px", borderTop: "2px dashed #e5e7eb", paddingTop: "16px" }}>
               {selectedCard.content.formula && (
-                <div style={{ backgroundColor: "#f8fafc", padding: "12px", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
+                <div style={{ backgroundColor: "#f8fafc", padding: "12px", borderRadius: "12px", border: "1px solid #e2e2f0" }}>
                   <span style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: "bold", display: "block", marginBottom: "4px" }}>📐 必勝公式・フレーム</span>
                   <strong style={{ fontSize: "0.95rem", color: "#334155" }}>{selectedCard.content.formula}</strong>
                   <p style={{ margin: "4px 0 0 0", fontSize: "0.85rem", color: "#475569", lineHeight: "1.4" }}>{selectedCard.content.formulaDetail}</p>
@@ -331,6 +351,29 @@ export default function KnowledgeListPage() {
                   {selectedCard.content.reproducibilityTip || "---"}
                 </p>
               </div>
+            </div>
+
+            {/* 管理用クリーンアップ削除エリア */}
+            <div style={{ marginTop: "32px", paddingTop: "16px", borderTop: "1px solid #f1f5f9", display: "flex", justifyContent: "flex-end" }}>
+              <button
+                onClick={() => handleDelete(selectedCard.cardId, selectedCard.title)}
+                disabled={isDeleting}
+                style={{
+                  padding: "10px 16px",
+                  borderRadius: "10px",
+                  border: "1px solid #fee2e2",
+                  backgroundColor: "#fef2f2",
+                  color: "#ef4444",
+                  fontSize: "0.85rem",
+                  fontWeight: "bold",
+                  cursor: isDeleting ? "not-allowed" : "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px"
+                }}
+              >
+                {isDeleting ? "神殿から片付け中..." : "🗑️ このナレッジを削除する"}
+              </button>
             </div>
 
           </div>

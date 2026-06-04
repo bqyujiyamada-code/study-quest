@@ -1,10 +1,10 @@
 "use server";
 
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, PutCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { DynamoDBDocumentClient, PutCommand, QueryCommand, DeleteCommand, GetCommand } from "@aws-sdk/lib-dynamodb";
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 
-// AWS クライアントの初期化（環境変数またはIAMロールから認証情報を自動取得）
+// AWS クライアントの初期化
 const ddbClient = new DynamoDBClient({ region: "ap-northeast-1" });
 const docClient = DynamoDBDocumentClient.from(ddbClient);
 const s3Client = new S3Client({ region: "ap-northeast-1" });
@@ -51,9 +51,6 @@ export async function saveKnowledgeCard(formData: FormData) {
     }
 
     // 2. 圧縮データ対策
-    // フロントエンド側（pako）で圧縮されたBase64文字列（先頭が 'eJy...' など）は、
-    // パースを試みるとSyntaxErrorになるため、そのまま文字列としてDynamoDBに保存。
-    // 万が一、従来の生JSONテキストが送られてきた場合のみパースしてオブジェクト型にする。
     let finalContent: any = contentData;
     if (contentData.trim().startsWith("{")) {
       try {
@@ -70,7 +67,7 @@ export async function saveKnowledgeCard(formData: FormData) {
       subject,
       title,
       intro,
-      content: finalContent, // 圧縮文字列、またはオブジェクトが綺麗に格納されます
+      content: finalContent,
       imageUrl: imageUrl || undefined,
       createdAt: new Date().toISOString(),
     };
@@ -106,7 +103,6 @@ export async function getKnowledgeCards(userId: string, subjectTag?: string) {
       },
     };
 
-    // 教科タグ（math, japanese等）が指定されている場合は、FilterExpressionで絞り込む
     if (subjectTag && subjectTag !== "all") {
       queryParams.FilterExpression = "subject = :sub";
       queryParams.ExpressionAttributeValues[":sub"] = subjectTag;
@@ -114,7 +110,7 @@ export async function getKnowledgeCards(userId: string, subjectTag?: string) {
 
     const data = await docClient.send(new QueryCommand(queryParams));
 
-    // 作成日時の新しい順（降順）にソートして返却
+    // 作成日時の新しい順（降順）にソート
     const sortedItems = (data.Items || []).sort(
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
@@ -123,5 +119,63 @@ export async function getKnowledgeCards(userId: string, subjectTag?: string) {
   } catch (error: any) {
     console.error("GET_KNOWLEDGE_CARDS_FAILURE:", error);
     return { success: false, error: error.message || "データの取得に失敗しちゃった。" };
+  }
+}
+
+/**
+ * ナレッジカードを削除する（S3の画像も連動して完全自動クリーンアップ）
+ */
+export async function deleteKnowledgeCard(userId: string, cardId: string) {
+  try {
+    if (!userId || !cardId) {
+      return { success: false, error: "ユーザーIDまたはカードIDが足りません。" };
+    }
+
+    // 1. まず現在のレコードから画像のURLがあるか調べる
+    const getResult = await docClient.send(
+      new GetCommand({
+        TableName: TABLE_NAME,
+        Key: { userId, cardId },
+      })
+    );
+
+    const targetItem = getResult.Item;
+    if (!targetItem) {
+      return { success: false, error: "削除対象のカードが見つかりませんでした。" };
+    }
+
+    // 2. S3の画像URLがある場合、S3からアセットを完全削除
+    if (targetItem.imageUrl) {
+      try {
+        const urlParts = targetItem.imageUrl.split(".amazonaws.com/");
+        if (urlParts.length === 2) {
+          const s3Key = urlParts[1];
+
+          await s3Client.send(
+            new DeleteObjectCommand({
+              Bucket: BUCKET_NAME,
+              Key: s3Key,
+            })
+          );
+          console.log(`S3の画像を削除しました: ${s3Key}`);
+        }
+      } catch (s3Error) {
+        console.error("S3_IMAGE_DELETE_FAILURE (Non-blocking):", s3Error);
+      }
+    }
+
+    // 3. DynamoDBからレコードを削除
+    await docClient.send(
+      new DeleteCommand({
+        TableName: TABLE_NAME,
+        Key: { userId, cardId },
+      })
+    );
+
+    console.log(`DynamoDBからカードを削除しました: ${cardId}`);
+    return { success: true };
+  } catch (error: any) {
+    console.error("DELETE_KNOWLEDGE_CARD_FAILURE:", error);
+    return { success: false, error: error.message || "カードの削除に失敗しちゃいました。" };
   }
 }
