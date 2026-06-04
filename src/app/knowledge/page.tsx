@@ -67,16 +67,27 @@ export default function KnowledgeListPage() {
     fetchCards(selectedSubject === "all" ? undefined : selectedSubject);
   }, [selectedSubject]);
 
+  // ★【劇的改善】絶対にクラッシュさせない最強のフィルターロジック
   const filteredCards = cards.filter((card) => {
     if (!searchQuery.trim()) return true;
     const query = searchQuery.toLowerCase().trim();
     
-    const weapon = card.content?.weapon?.toLowerCase() || "";
-    const pattern = card.content?.typicalPatternName?.toLowerCase() || "";
+    // card本体の文字列を安全に抽出（null/undefined 対策）
+    const title = (card.title || "").toLowerCase();
+    const titleKana = (card.titleKana || "").toLowerCase();
+
+    // contentの中身を徹底的に安全チェック（文字列型である場合のみtoLowerCaseをかける）
+    const weapon = (card.content && typeof card.content.weapon === "string") 
+      ? card.content.weapon.toLowerCase() 
+      : "";
+
+    const pattern = (card.content && typeof card.content.typicalPatternName === "string") 
+      ? card.content.typicalPatternName.toLowerCase() 
+      : "";
 
     return (
-      card.title.toLowerCase().includes(query) ||
-      card.titleKana.toLowerCase().includes(query) ||
+      title.includes(query) ||
+      titleKana.includes(query) ||
       weapon.includes(query) ||
       pattern.includes(query)
     );
@@ -153,18 +164,18 @@ export default function KnowledgeListPage() {
 
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.75rem", color: "#64748b", marginBottom: "4px" }}>
                 <span>{getSubjectLabel(card.subject)}</span>
-                <span style={{ color: "#d97706", fontWeight: "bold" }}>{card.content?.degreeOfAppearance}</span>
+                <span style={{ color: "#d97706", fontWeight: "bold" }}>{card.content?.degreeOfAppearance || "---"}</span>
               </div>
 
-              <h3 style={{ margin: "2px 0 4px 0", fontSize: "1.1rem", color: "#1e293b", lineHeight: "1.3" }}>{card.title}</h3>
-              <p style={{ fontSize: "0.75rem", color: "#94a3b8", margin: "0 0 6px 0" }}>{card.titleKana}</p>
-              <p style={{ fontSize: "0.75rem", color: "#475569", margin: "0 0 8px 0", fontStyle: "italic" }}>型: {card.content?.typicalPatternName}</p>
+              <h3 style={{ margin: "2px 0 4px 0", fontSize: "1.1rem", color: "#1e293b", lineHeight: "1.3" }}>{card.title || "無題のカード"}</h3>
+              <p style={{ fontSize: "0.75rem", color: "#94a3b8", margin: "0 0 6px 0" }}>{card.titleKana || ""}</p>
+              <p style={{ fontSize: "0.75rem", color: "#475569", margin: "0 0 8px 0", fontStyle: "italic" }}>型: {card.content?.typicalPatternName || "未定義"}</p>
               <p style={{ fontSize: "0.85rem", color: "#475569", lineHeight: "1.4", margin: 0, display: "-webkit-box", WebkitLineClamp: "2", WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-                {card.content?.essence}
+                {card.content?.essence || "解説データを読み込めませんでした。"}
               </p>
 
               <div style={{ backgroundColor: "#eff6ff", padding: "8px 12px", marginTop: "12px", borderRadius: "10px", border: "1px solid #dbeafe" }}>
-                <span style={{ fontSize: "0.8rem", fontWeight: "bold", color: "#1e4ed8" }}>⚔️ 武器: {card.content?.weapon}</span>
+                <span style={{ fontSize: "0.8rem", fontWeight: "bold", color: "#1e4ed8" }}>⚔️ 武器: {card.content?.weapon || "未定義"}</span>
               </div>
             </div>
           ))}
@@ -185,7 +196,7 @@ export default function KnowledgeListPage() {
                 {getSubjectLabel(selectedCard.subject)}
               </span>
               <span style={{ backgroundColor: "#fef3c7", color: "#d97706", fontSize: "0.75rem", fontWeight: "bold", padding: "4px 10px", borderRadius: "6px" }}>
-                よく出る度: {selectedCard.content.degreeOfAppearance}
+                よく出る度: {selectedCard.content.degreeOfAppearance || "---"}
               </span>
             </div>
 
@@ -200,29 +211,29 @@ export default function KnowledgeListPage() {
 
             <div style={{ backgroundColor: "#fff1f2", padding: "14px 16px", borderRadius: "14px", marginBottom: "20px", borderLeft: "5px solid #f43f5e", boxSizing: "border-box" }}>
               <p style={{ margin: 0, fontSize: "0.9rem", color: "#9f1239", lineHeight: "1.5", fontWeight: "medium" }}>
-                {selectedCard.intro}
+                {selectedCard.intro || "解説ロジックを見てみよう！"}
               </p>
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "20px" }}>
               <div style={{ border: "1px solid #e5e7eb", padding: "12px 14px", borderRadius: "12px", backgroundColor: "#fff" }}>
                 <h4 style={{ margin: "0 0 4px 0", color: "#111827", fontSize: "0.95rem" }}>💡 この問題の本質</h4>
-                <p style={{ margin: 0, fontSize: "0.88rem", color: "#4b5563", lineHeight: "1.4" }}>{selectedCard.content.essence}</p>
+                <p style={{ margin: 0, fontSize: "0.88rem", color: "#4b5563", lineHeight: "1.4" }}>{selectedCard.content.essence || "---"}</p>
               </div>
               <div style={{ border: "1px solid #e5e7eb", padding: "12px 14px", borderRadius: "12px", backgroundColor: "#fff" }}>
                 <h4 style={{ margin: "0 0 4px 0", color: "#111827", fontSize: "0.95rem" }}>🔍 似たパターンとの違い</h4>
-                <p style={{ margin: 0, fontSize: "0.88rem", color: "#4b5563", lineHeight: "1.4" }}>{selectedCard.content.difference}</p>
+                <p style={{ margin: 0, fontSize: "0.88rem", color: "#4b5563", lineHeight: "1.4" }}>{selectedCard.content.difference || "---"}</p>
               </div>
             </div>
 
             <div style={{ backgroundColor: "#fffbeb", padding: "14px", borderRadius: "14px", marginBottom: "20px", border: "1px solid #fef3c7", borderLeft: "5px solid #d97706" }}>
               <h4 style={{ margin: "0 0 6px 0", color: "#b45309", fontSize: "0.95rem", fontWeight: "bold" }}>⚡ ここが運命の分かれ道！</h4>
-              <p style={{ margin: 0, fontSize: "0.88rem", color: "#78350f", lineHeight: "1.5" }}>{selectedCard.content.forkInTheRoad}</p>
+              <p style={{ margin: 0, fontSize: "0.88rem", color: "#78350f", lineHeight: "1.5" }}>{selectedCard.content.forkInTheRoad || "---"}</p>
             </div>
 
             <div style={{ background: "linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%)", padding: "14px", borderRadius: "14px", marginBottom: "24px", textAlign: "center", border: "1px solid #a5b4fc" }}>
               <span style={{ fontSize: "0.75rem", fontWeight: "bold", color: "#4338ca", display: "block", marginBottom: "4px" }}>⚔️ 単元を無双する最強の武器</span>
-              <p style={{ margin: 0, fontSize: "1.05rem", fontWeight: "bold", color: "#1e3a8a", lineHeight: "1.4" }}>{selectedCard.content.weapon}</p>
+              <p style={{ margin: 0, fontSize: "1.05rem", fontWeight: "bold", color: "#1e3a8a", lineHeight: "1.4" }}>{selectedCard.content.weapon || "---"}</p>
             </div>
 
             <div style={{ marginBottom: "24px" }}>
@@ -308,16 +319,16 @@ export default function KnowledgeListPage() {
               )}
               
               <div style={{ padding: "0 4px" }}>
-                <span style={{ fontSize: "0.75rem", color: "#9ca3af", fontWeight: "bold", display: "block" }}>🏷️ 典型パターン：{selectedCard.content.typicalPatternName}</span>
+                <span style={{ fontSize: "0.75rem", color: "#9ca3af", fontWeight: "bold", display: "block" }}>🏷️ 典型パターン：{selectedCard.content.typicalPatternName || "未定義"}</span>
                 <p style={{ margin: "2px 0 0 0", fontSize: "0.85rem", color: "#4b5563", lineHeight: "1.4" }}>
-                  <span style={{ color: "#dc2626", fontWeight: "bold" }}>📌 絶対ルール：</span>{selectedCard.content.typicalPatternRule}
+                  <span style={{ color: "#dc2626", fontWeight: "bold" }}>📌 絶対ルール：</span>{selectedCard.content.typicalPatternRule || "---"}
                 </p>
               </div>
 
               <div style={{ backgroundColor: "#f0fdf4", padding: "12px", borderRadius: "12px", border: "1px solid #bbf7d0" }}>
                 <span style={{ fontSize: "0.75rem", color: "#166534", fontWeight: "bold", display: "block", marginBottom: "2px" }}>📝 次に同じような問題に出会ったら？</span>
                 <p style={{ margin: 0, fontSize: "0.88rem", color: "#14532d", lineHeight: "1.4" }}>
-                  {selectedCard.content.reproducibilityTip}
+                  {selectedCard.content.reproducibilityTip || "---"}
                 </p>
               </div>
             </div>
