@@ -1,6 +1,7 @@
 "use server";
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import pako from "pako";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
@@ -25,7 +26,7 @@ const getLogicInstruction = (subject: SubjectType): string => {
 };
 
 /**
- * 解説カード用のJSONデータを自動生成（汎用テンプレート最適化版）
+ * 解説カード用のJSONデータを自動生成（汎用テンプレート最適化 ＋ 圧縮版）
  */
 export async function generateKnowledgeCard(payload: {
   subject: SubjectType;
@@ -39,7 +40,7 @@ export async function generateKnowledgeCard(payload: {
     math: "算数",
     japanese: "国語",
     science: "理科",
-    society: "社会"
+                society: "社会"
   };
 
   const subjectName = subjectNames[payload.subject];
@@ -104,11 +105,16 @@ export async function generateKnowledgeCard(payload: {
 
     const parsedData = JSON.parse(text);
 
+    // ★【大容量ペイロード対策】巨大JSONをGzip圧縮してBase64文字列に変換、通信量を極限まで削る
+    const jsonString = JSON.stringify(parsedData);
+    const compressedUint8Array = pako.deflate(jsonString);
+    const compressedBase64 = Buffer.from(compressedUint8Array).toString("base64");
+
     return { 
       success: true, 
       title: payload.title,
-      intro: parsedData.intro,
-      content: parsedData 
+      intro: parsedData.intro || "",
+      compressedContent: compressedBase64 
     };
   } catch (error: any) {
     console.error("KNOWLEDGE_GENERATION_FAILURE:", error);
