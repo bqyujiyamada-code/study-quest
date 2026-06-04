@@ -47,7 +47,7 @@ export async function saveKnowledgeCard(formData: FormData) {
           ContentType: imageFile.type,
         })
       );
-      imageUrl = `https://${BUCKET_NAME}.s3.ap-northeast-1.amazonaws.com/${s3Key}`;
+      imageUrl = `https://d3nkmrk6hg66h7.cloudfront.net/${s3Key}`;
     }
 
     // 2. 圧縮データ対策
