@@ -9,34 +9,53 @@ const toRadian = (degree: number) => (degree * Math.PI) / 180;
 
 type FaceConfig = { text: string; rotate: number; };
 
-type AbsoluteFaceData = {
+type NetNode = {
   id: string;
   name: string;
   color: string;
+  direction?: "up" | "down" | "left" | "right";
+  children?: NetNode[];
 };
 
-const PATTERNS: Record<string, { label: string; faces: AbsoluteFaceData[] }> = {
+// 🗺️ 正しい展開図ツリー（めり込みが起きない接続定義）
+const PATTERNS: Record<string, { label: string; root: NetNode }> = {
   cross: {
     label: "① 十字型（基本）",
-    faces: [
-      { id: "bottom", name: "底面", color: "#38bdf8" },
-      { id: "front",  name: "手前", color: "#f43f5e" },
-      { id: "back",   name: "奥面", color: "#10b981" },
-      { id: "top",    name: "天井", color: "#ffffff" },
-      { id: "left",   name: "左面", color: "#eab308" },
-      { id: "right",  name: "右面", color: "#a855f7" }
-    ]
+    root: {
+      id: "bottom", name: "底面", color: "#38bdf8",
+      children: [
+        { id: "front", name: "手前", direction: "down", color: "#f43f5e" },
+        { 
+          id: "back", name: "奥面", direction: "up", color: "#10b981",
+          children: [
+            { id: "top", name: "天井", direction: "up", color: "#ffffff" }
+          ]
+        },
+        { id: "left", name: "左面", direction: "left", color: "#eab308" },
+        { id: "right", name: "右面", direction: "right", color: "#a855f7" }
+      ]
+    }
   },
   zShape: {
     label: "② Z型（いなずま型）",
-    faces: [
-      { id: "bottom", name: "底面", color: "#38bdf8" },
-      { id: "front",  name: "手前", color: "#f43f5e" },
-      { id: "back",   name: "奥面", color: "#10b981" },
-      { id: "top",    name: "天井", color: "#ffffff" },
-      { id: "left",   name: "左面", color: "#eab308" },
-      { id: "right",  name: "右面", color: "#a855f7" }
-    ]
+    root: {
+      id: "bottom", name: "底面", color: "#38bdf8",
+      children: [
+        { id: "front", name: "手前", direction: "down", color: "#f43f5e" },
+        { 
+          id: "back", name: "奥面", direction: "up", color: "#10b981",
+          children: [
+            { 
+              id: "top", name: "天井", direction: "up", color: "#ffffff",
+              children: [
+                { id: "left", name: "左面", direction: "left", color: "#eab308" }
+              ]
+            }
+          ]
+        },
+        { id: "right", name: "右面", direction: "right", color: "#a855f7" }
+      ]
+    }
   }
 };
 
@@ -61,100 +80,62 @@ function PrintedTextMaterial({ text, rotate, color }: { text: string; rotate: nu
   );
 }
 
-// 🌟 三角関数で「谷折り」の物理的な位置と回転を完全に固定計算するコンポーネント
-function AbsoluteFace({ id, pattern, progress, faceConfig, color }: { id: string; pattern: string; progress: number; faceConfig: FaceConfig; color: string }) {
-  const meshRef = useRef<THREE.Mesh>(null);
+// 🌟 隙間なく完全に密着し、上向きにパタパタ折れるコンポーネント
+function FoldableNode({ node, rad, faces }: { node: NetNode; rad: number; faces: Record<string, FaceConfig> }) {
+  const faceConfig = faces[node.id] || { text: "?", rotate: 0 };
 
-  useEffect(() => {
-    if (!meshRef.current) return;
+  let pivotPos: [number, number, number] = [0, 0, 0];
+  let pivotRot: [number, number, number] = [0, 0, 0];
+  let meshPos: [number, number, number] = [0, 0, 0];
 
-    const rad = (progress / 100) * (Math.PI / 2); // 0度 〜 90度
-
-    // デフォルト（底面）
-    let pos: [number, number, number] = [0, 0, 0];
-    let rot: [number, number, number] = [0, 0, 0];
-
-    if (pattern === "cross") {
-      // 🔷 十字型の完璧な数学的軌道（すべて下向き・谷折り）
-      switch (id) {
-        case "bottom":
-          pos = [0, 0, 0]; rot = [0, 0, 0];
-          break;
-        case "front": // 下に90度折れる（手前のフチ [0, -0.5, 0] が軸）
-          pos = [0, -0.5 - 0.5 * Math.cos(rad), -0.5 * Math.sin(rad)];
-          rot = [-rad, 0, 0];
-          break;
-        case "back": // 下に90度折れる（奥のフチ [0, 0.5, 0] が軸）
-          pos = [0, 0.5 + 0.5 * Math.cos(rad), -0.5 * Math.sin(rad)];
-          rot = [rad, 0, 0];
-          break;
-        case "top": // 奥面に連動し、さらに直角に折れる
-          pos = [
-            0,
-            0.5 + Math.cos(rad) - 0.5 * Math.sin(rad),
-            -Math.sin(rad) - 0.5 * Math.cos(rad)
-          ];
-          rot = [rad * 2, 0, 0];
-          break;
-        case "left": // 左に90度折れる（左のフチ [-0.5, 0, 0] が軸）
-          pos = [-0.5 - 0.5 * Math.cos(rad), 0, -0.5 * Math.sin(rad)];
-          rot = [0, -rad, 0];
-          break;
-        case "right": // 右に90度折れる（右のフチ [0.5, 0, 0] が軸）
-          pos = [0.5 + 0.5 * Math.cos(rad), 0, -0.5 * Math.sin(rad)];
-          rot = [0, rad, 0];
-          break;
-      }
-    } else {
-      // ⚡ Z型（いなずま型）の完璧な数学的軌道
-      switch (id) {
-        case "bottom":
-          pos = [0, 0, 0]; rot = [0, 0, 0];
-          break;
-        case "front":
-          pos = [0, -0.5 - 0.5 * Math.cos(rad), -0.5 * Math.sin(rad)];
-          rot = [-rad, 0, 0];
-          break;
-        case "back":
-          pos = [0, 0.5 + 0.5 * Math.cos(rad), -0.5 * Math.sin(rad)];
-          rot = [rad, 0, 0];
-          break;
-        case "top": // 奥面の先に連動
-          pos = [
-            0,
-            0.5 + Math.cos(rad) - 0.5 * Math.sin(rad),
-            -Math.sin(rad) - 0.5 * Math.cos(rad)
-          ];
-          rot = [rad * 2, 0, 0];
-          break;
-        case "left": // 🔴 Z型では「天井の左側」に密着して連動する！
-          // 天井の左端のフチ座標をベースに、さらにY軸（ローカル）で直角に折る
-          pos = [
-            -0.5 * Math.cos(rad),
-            0.5 + Math.cos(rad) - 0.5 * Math.sin(rad),
-            -Math.sin(rad) - 0.5 * Math.cos(rad) - 0.5 * Math.sin(rad)
-          ];
-          // 奥への回転(rad*2)に、左への折れ曲がり(-rad)を3D合成
-          const euler = new THREE.Euler(rad * 2, -rad, 0, "YXZ");
-          meshRef.current.position.set(...pos);
-          meshRef.current.rotation.copy(euler);
-          return; // 独自の回転を適用するためここで抜ける
-        case "right":
-          pos = [0.5 + 0.5 * Math.cos(rad), 0, -0.5 * Math.sin(rad)];
-          rot = [0, rad, 0];
-          break;
-      }
-    }
-
-    meshRef.current.position.set(...pos);
-    meshRef.current.rotation.set(...rot);
-  }, [progress, id, pattern]);
+  // 親の面（サイズ1.0）の境界フチにピッタリ蝶番を置き、上（内側）に向かって折る
+  switch (node.direction) {
+    case "up":
+      pivotPos = [0, 0.5, 0];       // 親の上のフチ
+      pivotRot = [-rad, 0, 0];      // 3D床空間上で「上向き」に直角に折る
+      meshPos = [0, 0.5, 0];        // 蝶番からさらに0.5進んだところがマスの中心
+      break;
+    case "down":
+      pivotPos = [0, -0.5, 0];      // 親の下のフチ
+      pivotRot = [rad, 0, 0];       // 上向きに折る
+      meshPos = [0, -0.5, 0];
+      break;
+    case "left":
+      pivotPos = [-0.5, 0, 0];      // 親の左のフチ
+      pivotRot = [0, rad, 0];       // 上向きに折る
+      meshPos = [-0.5, 0, 0];
+      break;
+    case "right":
+      pivotPos = [0.5, 0, 0];       // 親の右のフチ
+      pivotRot = [0, -rad, 0];      // 上向きに折る
+      meshPos = [0.5, 0, 0];
+      break;
+  }
 
   return (
-    <mesh ref={meshRef}>
-      <planeGeometry args={[1, 1]} />
-      <PrintedTextMaterial text={faceConfig?.text || "❓"} rotate={faceConfig?.rotate || 0} color={color} />
-    </mesh>
+    // 折り目（ヒンジ）のグループ
+    <group position={pivotPos} rotation={pivotRot}>
+      {/* 自分の面：蝶番から0.5ずらして配置することで、端を軸に綺麗に回転する */}
+      <mesh position={meshPos}>
+        <planeGeometry args={[1, 1]} />
+        <PrintedTextMaterial text={faceConfig.text} rotate={faceConfig.rotate} color={node.color} />
+      </mesh>
+
+      {/* 次の子要素：自分のメッシュの中心から、さらに0.5進んだ「先端のフチ」に連結する */}
+      {node.children?.map((child) => {
+        let nextPivotPos: [number, number, number] = [0, 0, 0];
+        if (child.direction === "up") nextPivotPos = [0, 1.0, 0];      // 0.5 + 0.5 でぴったり次のマスの境界
+        else if (child.direction === "down") nextPivotPos = [0, -1.0, 0];
+        else if (child.direction === "left") nextPivotPos = [-1.0, 0, 0];
+        else if (child.direction === "right") nextPivotPos = [1.0, 0, 0];
+
+        return (
+          <group key={child.id} position={nextPivotPos}>
+            <FoldableNode node={child} rad={rad} faces={faces} />
+          </group>
+        );
+      })}
+    </group>
   );
 }
 
@@ -168,13 +149,21 @@ export default function CubeQuestPage() {
     right: { text: "E", rotate: 0 }, top: { text: "F", rotate: 0 },
   });
 
+  const rad = toRadian((progress / 100) * 90);
   const currentPattern = PATTERNS[currentPatternKey];
+
+  const getFaceList = (node: NetNode): { id: string; name: string }[] => {
+    let list = [{ id: node.id, name: node.name }];
+    if (node.children) node.children.forEach(c => { list = list.concat(getFaceList(c)); });
+    return list;
+  };
+  const activeFaces = getFaceList(currentPattern.root);
 
   return (
     <div className="w-full h-screen bg-slate-900 flex flex-col md:flex-row text-white overflow-hidden">
       <div className="w-full md:w-96 bg-slate-800 p-6 flex flex-col border-r border-slate-700 z-10 shadow-2xl">
         <h1 className="text-xl font-bold text-cyan-400 mb-1">📦 立体パタパタ実験室</h1>
-        <p className="text-xs text-slate-400 mb-6 font-medium">完全数理制御・谷折り絶対解</p>
+        <p className="text-xs text-slate-400 mb-6 font-medium font-sans">展開図完全密着・上向き折り固定版</p>
 
         <div className="mb-6 space-y-2">
           <label className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">パターン選択</label>
@@ -195,7 +184,7 @@ export default function CubeQuestPage() {
           <div>
             <label className="text-[10px] text-slate-500 uppercase tracking-widest font-bold block mb-2">面を選択</label>
             <div className="grid grid-cols-3 gap-2">
-              {currentPattern.faces.map(f => (
+              {activeFaces.map(f => (
                 <button key={f.id} onClick={() => setSelectedFaceId(f.id)} className={`py-2 text-[10px] font-bold rounded border transition-all ${selectedFaceId === f.id ? "bg-cyan-500 border-cyan-400 text-slate-900" : "bg-slate-700 border-slate-600"}`}>{f.name}</button>
               ))}
             </div>
@@ -213,24 +202,36 @@ export default function CubeQuestPage() {
       </div>
 
       <div className="flex-1 relative bg-slate-950">
-        <Canvas camera={{ position: [0, 4, 6], fov: 40 }}>
+        <Canvas camera={{ position: [0, 3, 5], fov: 45 }}>
           <ambientLight intensity={0.8} />
           <directionalLight position={[5, 10, 5]} intensity={0.6} />
           
-          {/* 3D空間の基準グループ (XY平面を床に倒す) */}
-          <group position={[0, 0, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-            {currentPattern.faces.map(face => (
-              <AbsoluteFace 
-                key={face.id} 
-                id={face.id} 
-                pattern={currentPatternKey} 
-                progress={progress} 
-                faceConfig={faces[face.id]} 
-                color={face.color}
-              />
-            ))}
+          {/* 基準の床面 */}
+          <group position={[0, -0.5, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            
+            {/* 底面（すべての親、中心原点） */}
+            <mesh position={[0, 0, 0]}>
+              <planeGeometry args={[1, 1]} />
+              <PrintedTextMaterial text={faces[currentPattern.root.id]?.text || "A"} rotate={faces[currentPattern.root.id]?.rotate || 0} color={currentPattern.root.color} />
+            </mesh>
+
+            {/* 子要素（パタパタ折れるツリーを完全にフチ結合で配置） */}
+            {currentPattern.root.children?.map(child => {
+              let firstPivotPos: [number, number, number] = [0, 0, 0];
+              if (child.direction === "up") firstPivotPos = [0, 0.5, 0];
+              else if (child.direction === "down") firstPivotPos = [0, -0.5, 0];
+              else if (child.direction === "left") firstPivotPos = [-0.5, 0, 0];
+              else if (child.direction === "right") firstPivotPos = [0.5, 0, 0];
+
+              return (
+                <group key={child.id} position={firstPivotPos}>
+                  <FoldableNode node={child} rad={rad} faces={faces} />
+                </group>
+              );
+            })}
+
           </group>
-          <OrbitControls enableDamping minDistance={3} maxDistance={12} />
+          <OrbitControls enableDamping minDistance={2} maxDistance={10} />
         </Canvas>
       </div>
     </div>
