@@ -4,7 +4,6 @@ import React, { useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Html } from "@react-three/drei";
 
-// 角度をラジアンに変換するヘルパー
 const toRadian = (degree: number) => (degree * Math.PI) / 180;
 
 export default function CubeQuestPage() {
@@ -31,7 +30,7 @@ export default function CubeQuestPage() {
           <ambientLight intensity={0.6} />
           <directionalLight position={[5, 8, 5]} intensity={0.8} />
 
-          {/* 🌟 展開図全体のグループ（全体を寝かせた状態で配置） */}
+          {/* 🌟 展開図全体のグループ */}
           <group position={[0, 0, 0]} rotation={[-Math.PI / 2, 0, 0]}>
             
             {/* ① 底面（中央：完全に固定の基準面） */}
@@ -43,8 +42,8 @@ export default function CubeQuestPage() {
               </Html>
             </mesh>
 
-            {/* ② 手前の面（ピンク）：y = -0.5 の辺を軸に、手前から起き上がる */}
-            <group position={[0, -0.5, 0]} rotation={[rad, 0, 0]}>
+            {/* ② 手前の面（ピンク）：符号を -rad にして上向きに折る */}
+            <group position={[0, -0.5, 0]} rotation={[-rad, 0, 0]}>
               <mesh position={[0, -0.5, 0]}>
                 <planeGeometry args={[1, 1]} />
                 <meshStandardMaterial color="#f43f5e" side={2} />
@@ -54,8 +53,8 @@ export default function CubeQuestPage() {
               </mesh>
             </group>
 
-            {/* ③ 奥の面（緑）：y = 0.5 の辺を軸に、奥から起き上がる */}
-            <group position={[0, 0.5, 0]} rotation={[-rad, 0, 0]}>
+            {/* ③ 奥の面（緑）：符号を rad にして上向きに折る */}
+            <group position={[0, 0.5, 0]} rotation={[rad, 0, 0]}>
               <mesh position={[0, 0.5, 0]}>
                 <planeGeometry args={[1, 1]} />
                 <meshStandardMaterial color="#10b981" side={2} />
@@ -65,8 +64,8 @@ export default function CubeQuestPage() {
               </mesh>
             </group>
 
-            {/* ④ 左の面（黄色）：x = -0.5 の辺を軸に、左から起き上がる */}
-            <group position={[-0.5, 0, 0]} rotation={[0, -rad, 0]}>
+            {/* ④ 左の面（黄色）：符号を rad にして上向きに折る */}
+            <group position={[-0.5, 0, 0]} rotation={[0, rad, 0]}>
               <mesh position={[-0.5, 0, 0]}>
                 <planeGeometry args={[1, 1]} />
                 <meshStandardMaterial color="#eab308" side={2} />
@@ -76,8 +75,8 @@ export default function CubeQuestPage() {
               </mesh>
             </group>
 
-            {/* ⑤ 右の面（紫）：x = 0.5 の辺を軸に、右から起き上がる */}
-            <group position={[0.5, 0, 0]} rotation={[0, rad, 0]}>
+            {/* ⑤ 右の面（紫）：符号を -rad にして上向きに折る */}
+            <group position={[0.5, 0, 0]} rotation={[0, -rad, 0]}>
               <mesh position={[0.5, 0, 0]}>
                 <planeGeometry args={[1, 1]} />
                 <meshStandardMaterial color="#a855f7" side={2} />
