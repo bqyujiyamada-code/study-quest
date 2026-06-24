@@ -17,7 +17,7 @@ type NetNode = {
   children?: NetNode[];
 };
 
-// 🗺️ 正しい展開図ツリー（親のどの辺から次の面が生えるか）
+// 🗺️ 展開図ツリー（親から見てどの方向に生えるか）
 const PATTERNS: Record<string, { label: string; root: NetNode }> = {
   cross: {
     label: "① 十字型（基本）",
@@ -48,7 +48,7 @@ const PATTERNS: Record<string, { label: string; root: NetNode }> = {
             { 
               id: "top", name: "天井", direction: "up", color: "#ffffff",
               children: [
-                { id: "left", name: "左面", direction: "left", color: "#eab308" } // 天井の左側に繋がる
+                { id: "left", name: "左面", direction: "left", color: "#eab308" }
               ]
             }
           ]
@@ -80,63 +80,65 @@ function PrintedTextMaterial({ text, rotate, color }: { text: string; rotate: nu
   );
 }
 
-// 🌟 展開図の時点で1ミリのズレもなく完璧に吸い付くヒンジコンポーネント
+// 🌟 親のフチに100%密着してパタパタ折れるコンポーネント
 function FoldableNode({ node, rad, faces }: { node: NetNode; rad: number; faces: Record<string, FaceConfig> }) {
   const faceConfig = faces[node.id] || { text: "?", rotate: 0 };
 
-  // 親の面（中心が原点）から見た、この面の「折り目（ヒンジ）」の位置
-  let pivotPos: [number, number, number] = [0, 0, 0];
-  // 谷折りの回転軸
-  let pivotRot: [number, number, number] = [0, 0, 0];
-  // 折り目（ヒンジ）から見た、この「面自体の中心」の位置（常に0.5ずれる）
-  let meshPos: [number, number, number] = [0, 0, 0];
-  // 次の子供のヒンジを、この面の「先端の辺」に配置するためのオフセット位置
-  let nextChildPos: [number, number, number] = [0, 0, 0];
+  // 回転の中心軸（親のフチ）を定義
+  let pivotRotation: [number, number, number] = [0, 0, 0];
+  
+  // 面（Mesh）の中心位置を、回転軸から正確に0.5マス分だけずらす
+  let meshPosition: [number, number, number] = [0, 0, 0];
+  
+  // 次の子要素の回転軸（グループ）を、この面の「外側のフチ（1.0進んだ先）」に正確に配置する
+  let nextChildPosition: [number, number, number] = [0, 0, 0];
 
   switch (node.direction) {
     case "up":
-      pivotPos = [0, 0.5, 0];      // 親の上の辺
-      pivotRot = [rad, 0, 0];      // 奥へ90度折れる
-      meshPos = [0, 0.5, 0];       // ヒンジからさらに上へ0.5ずらす
-      nextChildPos = [0, 1.0, 0];  // この面のさらに上の辺（0.5 + 0.5）
+      pivotRotation = [rad, 0, 0];
+      meshPosition = [0, 0.5, 0];
+      nextChildPosition = [0, 1.0, 0]; // ぴったり次のマスの境界線
       break;
     case "down":
-      pivotPos = [0, -0.5, 0];     // 親の下の辺
-      pivotRot = [-rad, 0, 0];     // 手前へ90度折れる
-      meshPos = [0, -0.5, 0];      // ヒンジからさらに下へ0.5ずらす
-      nextChildPos = [0, -1.0, 0]; // この面のさらに下の辺
+      pivotRotation = [-rad, 0, 0];
+      meshPosition = [0, -0.5, 0];
+      nextChildPosition = [0, -1.0, 0];
       break;
     case "left":
-      pivotPos = [-0.5, 0, 0];     // 親の左の辺
-      pivotRot = [0, -rad, 0];     // 左へ90度折れる
-      meshPos = [-0.5, 0, 0];      // ヒンジからさらに左へ0.5ずらす
-      nextChildPos = [-1.0, 0, 0]; // この面のさらに左の辺
+      pivotRotation = [0, -rad, 0];
+      meshPosition = [-0.5, 0, 0];
+      nextChildPosition = [-1.0, 0, 0];
       break;
     case "right":
-      pivotPos = [0.5, 0, 0];      // 親の右の辺
-      pivotRot = [0, rad, 0];      // 右へ90度折れる
-      meshPos = [0.5, 0, 0];       // ヒンジからさらに右へ0.5ずらす
-      nextChildPos = [1.0, 0, 0];  // この面のさらに右の辺
+      pivotRotation = [0, rad, 0];
+      meshPosition = [0.5, 0, 0];
+      nextChildPosition = [1.0, 0, 0];
       break;
   }
 
   return (
-    // 💡 親の端（折り目）にこのグループを配置し、スライダーに応じて回転させる
-    <group position={pivotPos} rotation={pivotRot}>
-      
+    <group rotation={pivotRotation}>
       {/* 自分の面 */}
-      <mesh position={meshPos}>
+      <mesh position={meshPosition}>
         <planeGeometry args={[1, 1]} />
         <PrintedTextMaterial text={faceConfig.text} rotate={faceConfig.rotate} color={node.color} />
       </mesh>
 
-      {/* 💡 子要素（次の面）のヒンジを、自分の面の「先端のフチ」に正確に連結する */}
-      {node.children?.map((child) => (
-        <group key={child.id} position={nextChildPos}>
-          <FoldableNode node={child} rad={rad} faces={faces} />
-        </group>
-      ))}
+      {/* 子要素（次の面）を、この面の「外側のフチ」に狂いなく連結する */}
+      {node.children?.map((child) => {
+        // 次の子供がどの方向に生えるかによって、このグループのローカル座標上の位置をマッピング
+        let childGroupPos: [number, number, number] = [0, 0, 0];
+        if (child.direction === "up") childGroupPos = [0, 1.0, 0];
+        else if (child.direction === "down") childGroupPos = [0, -1.0, 0];
+        else if (child.direction === "left") childGroupPos = [-1.0, 0, 0];
+        else if (child.direction === "right") childGroupPos = [1.0, 0, 0];
 
+        return (
+          <group key={child.id} position={childGroupPos}>
+            <FoldableNode node={child} rad={rad} faces={faces} />
+          </group>
+        );
+      })}
     </group>
   );
 }
@@ -165,7 +167,7 @@ export default function CubeQuestPage() {
     <div className="w-full h-screen bg-slate-900 flex flex-col md:flex-row text-white overflow-hidden">
       <div className="w-full md:w-96 bg-slate-800 p-6 flex flex-col border-r border-slate-700 z-10 shadow-2xl">
         <h1 className="text-xl font-bold text-cyan-400 mb-1">📦 立体パタパタ実験室</h1>
-        <p className="text-xs text-slate-400 mb-6 font-medium">展開図完全密着・サイコロ完全版</p>
+        <p className="text-xs text-slate-400 mb-6 font-medium">初期位置密着・サイコロ完全版</p>
 
         <div className="mb-6 space-y-2">
           <label className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">パターン選択</label>
@@ -208,7 +210,6 @@ export default function CubeQuestPage() {
           <ambientLight intensity={0.8} />
           <directionalLight position={[5, 10, 5]} intensity={0.6} />
           
-          {/* 基準の平らな床面 */}
           <group position={[0, 0, 0]} rotation={[-Math.PI / 2, 0, 0]}>
             
             {/* 底面（すべての中心親） */}
@@ -218,9 +219,20 @@ export default function CubeQuestPage() {
             </mesh>
 
             {/* 子要素（パタパタ折れるツリー） */}
-            {currentPattern.root.children?.map(child => (
-              <FoldableNode key={child.id} node={child} rad={rad} faces={faces} />
-            ))}
+            {currentPattern.root.children?.map(child => {
+              // 最初の子グループの位置を、底面の「辺（フチ）」に正確に配置
+              let p: [number, number, number] = [0, 0, 0];
+              if (child.direction === "up") p = [0, 0.5, 0];
+              else if (child.direction === "down") p = [0, -0.5, 0];
+              else if (child.direction === "left") p = [-0.5, 0, 0];
+              else if (child.direction === "right") p = [0.5, 0, 0];
+
+              return (
+                <group key={child.id} position={p}>
+                  <FoldableNode node={child} rad={rad} faces={faces} />
+                </group>
+              );
+            })}
 
           </group>
           <OrbitControls enableDamping minDistance={3} maxDistance={12} />
