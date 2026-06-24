@@ -7,24 +7,19 @@ import * as THREE from "three";
 
 const toRadian = (degree: number) => (degree * Math.PI) / 180;
 
-// 各面の文字と向きを管理する型
 type FaceConfig = {
   text: string;
   rotate: number;
 };
 
-// 🌟 展開図の「接続データ」を定義する型（ツリー構造）
 type NetNode = {
-  id: string;       // 面の識別子（"bottom", "front" など）
-  name: string;     // 画面表示用の名前
-  color: string;    // 面の色
-  // 親の面から見て、どちらの方向に生えているか
-  // up: 奥 / down: 手前 / left: 左 / right: 右
+  id: string;
+  name: string;
+  color: string;
   direction?: "up" | "down" | "left" | "right";
-  children?: NetNode[]; // この面の先にさらに繋がっている面
+  children?: NetNode[];
 };
 
-// --- 🗺️ 展開図のパターンデータ ---
 const PATTERNS: Record<string, { label: string; root: NetNode }> = {
   cross: {
     label: "① 十字型（基本）",
@@ -55,7 +50,7 @@ const PATTERNS: Record<string, { label: string; root: NetNode }> = {
             { 
               id: "top", name: "天井", direction: "up", color: "#ffffff",
               children: [
-                { id: "left", name: "左面", direction: "left", color: "#eab308" } // 天井の左にくっつく
+                { id: "left", name: "左面", direction: "left", color: "#eab308" }
               ]
             }
           ]
@@ -66,13 +61,12 @@ const PATTERNS: Record<string, { label: string; root: NetNode }> = {
   }
 };
 
-// 🌟 テクスチャ印刷マテリアル
 function PrintedTextMaterial({ text, rotate, color }: { text: string; rotate: number; color: string }) {
   const textureRef = useRef<THREE.CanvasTexture>(null);
   useEffect(() => { if (textureRef.current) textureRef.current.needsUpdate = true; }, [text, rotate]);
 
   return (
-    <meshStandardMaterial color={color} side={THREE.DoubleSide} roughness={0.4}>
+    <meshStandardMaterial color={color} side={THREE.DoubleSide} roughness={0.4} fill-opacity={0.9}>
       <canvasTexture
         ref={textureRef} attach="map"
         image={(() => {
@@ -92,49 +86,57 @@ function PrintedTextMaterial({ text, rotate, color }: { text: string; rotate: nu
   );
 }
 
-// 🌟 自動で連動して折れ曲がる再帰コンポーネント
+// 🌟 修正版：ローカルの接続辺（ヒンジ）を軸に、正しく内側へ90度折れる再帰コンポーネント
 function FoldableNode({ node, rad, faces }: { node: NetNode; rad: number; faces: Record<string, FaceConfig> }) {
   const faceConfig = faces[node.id] || { text: "?", rotate: 0 };
 
-  // 📐 親の辺の位置（支点）と、回転軸・回転方向の割り出し
-  let groupPosition: [number, number, number] = [0, 0, 0];
-  let groupRotation: [number, number, number] = [0, 0, 0];
+  // 1. まず、親の面から見て「どの辺に結合しているか」に基づいて、ヒンジ（折れ目）のトランスフォームを決定する
+  let pivotPosition: [number, number, number] = [0, 0, 0];
+  let pivotRotation: [number, number, number] = [0, 0, 0];
 
-  if (node.direction === "up") {
-    groupPosition = [0, 0.5, 0];       // 上の辺
-    groupRotation = [rad, 0, 0];        // 谷折り（文字を外側にするために手前に折る）
-  } else if (node.direction === "down") {
-    groupPosition = [0, -0.5, 0];      // 下の辺
-    groupRotation = [-rad, 0, 0];       // 谷折り
-  } else if (node.direction === "left") {
-    groupPosition = [-0.5, 0, 0];      // 左の辺
-    groupRotation = [0, -rad, 0];       // 谷折り
-  } else if (node.direction === "right") {
-    groupPosition = [0.5, 0, 0];       // 右の辺
-    groupRotation = [0, rad, 0];        // 谷折り
+  // 面のローカル座標系において、メッシュをさらに半分ずらして配置するための座標
+  let meshPosition: [number, number, number] = [0, 0, 0];
+
+  switch (node.direction) {
+    case "up":
+      pivotPosition = [0, 0.5, 0];     // 親の上の辺
+      pivotRotation = [rad, 0, 0];      // X軸正方向に回転（谷折り）
+      meshPosition = [0, 0.5, 0];      // 軸からさらに上に1マス分
+      break;
+    case "down":
+      pivotPosition = [0, -0.5, 0];    // 親の下の辺
+      pivotRotation = [-rad, 0, 0];     // X軸負方向に回転（谷折り）
+      meshPosition = [0, -0.5, 0];     // 軸からさらに下に1マス分
+      break;
+    case "left":
+      pivotPosition = [-0.5, 0, 0];    // 親の左の辺
+      pivotRotation = [0, -rad, 0];     // Y軸負方向に回転（谷折り）
+      meshPosition = [-0.5, 0, 0];     // 軸からさらに左に1マス分
+      break;
+    case "right":
+      pivotPosition = [0.5, 0, 0];     // 親の右の辺
+      pivotRotation = [0, rad, 0];      // Y軸正方向に回転（谷折り）
+      meshPosition = [0.5, 0, 0];      // 軸からさらに右に1マス分
+      break;
   }
 
-  // 子要素（メッシュ）の配置：親の辺から1マス分外側にずらす
-  let meshPosition: [number, number, number] = [0, 0, 0];
-  if (node.direction === "up") meshPosition = [0, 0.5, 0];
-  if (node.direction === "down") meshPosition = [0, -0.5, 0];
-  if (node.direction === "left") meshPosition = [-0.5, 0, 0];
-  if (node.direction === "right") meshPosition = [0.5, 0, 0];
-
   return (
-    <group position={groupPosition} rotation={groupRotation}>
-      {/* 自分自身の面を描画 */}
+    // 💡 この group 自体が「折り目のライン（ヒンジ）」の役割を果たします
+    <group position={pivotPosition} rotation={pivotRotation}>
+      
+      {/* 自分の面 */}
       <mesh position={meshPosition}>
         <planeGeometry args={[1, 1]} />
         <PrintedTextMaterial text={faceConfig.text} rotate={faceConfig.rotate} color={node.color} />
       </mesh>
 
-      {/* 先っぽに繋がっている子どもの面を、自分（Mesh）を基準にして再帰的に配置 */}
+      {/* 💡 次の子要素は「自分の面（Mesh）の位置」を新たな基準点として生やす */}
       {node.children?.map((child) => (
         <group key={child.id} position={meshPosition}>
           <FoldableNode node={child} rad={rad} faces={faces} />
         </group>
       ))}
+
     </group>
   );
 }
@@ -144,7 +146,6 @@ export default function CubeQuestPage() {
   const [progress, setProgress] = useState<number>(0);
   const [selectedFaceId, setSelectedFaceId] = useState<string>("bottom");
 
-  // 6面分の文字データ
   const [faces, setFaces] = useState<Record<string, FaceConfig>>({
     bottom: { text: "A", rotate: 0 },
     front: { text: "B", rotate: 0 },
@@ -158,7 +159,6 @@ export default function CubeQuestPage() {
   const rad = toRadian(angle);
   const currentPattern = PATTERNS[currentPatternKey];
 
-  // 面の一覧を取得するヘルパー
   const getFaceList = (node: NetNode): { id: string; name: string }[] => {
     let list = [{ id: node.id, name: node.name }];
     if (node.children) {
@@ -173,6 +173,7 @@ export default function CubeQuestPage() {
   };
 
   const handleRotate = () => {
+    if (!faces[selectedFaceId]) return;
     setFaces({ 
       ...faces, 
       [selectedFaceId]: { ...faces[selectedFaceId], rotate: (faces[selectedFaceId].rotate + 90) % 360 } 
@@ -186,15 +187,15 @@ export default function CubeQuestPage() {
       <div className="w-full md:w-96 bg-slate-800 p-6 flex flex-col justify-between border-b md:border-b-0 md:border-r border-slate-700 z-10 shadow-2xl overflow-y-auto">
         <div>
           <h1 className="text-xl font-bold tracking-wider text-cyan-400 mb-1">📦 立体パタパタ実験室</h1>
-          <p className="text-xs text-slate-400 mb-6">全自動マッピング＆谷折り完全対応版</p>
+          <p className="text-xs text-slate-400 mb-6">座標のねじれを完全修正・サイコロ完成版</p>
 
-          {/* 🛠️ 展開図の形を選ぶボタンを追加！ */}
+          {/* 展開図の切り替え */}
           <div className="mb-6 bg-slate-900/40 p-3 rounded-xl border border-slate-700/60">
             <label className="text-xs text-slate-400 block mb-2 font-medium">🔷 展開図の形を切り替える</label>
             <div className="flex flex-col gap-2">
               {Object.entries(PATTERNS).map(([key, pat]) => (
                 <button
-                  key={key} onClick={() => { setCurrentPatternKey(key); setSelectedFaceId(pat.root.id); }}
+                  key={key} onClick={() => { setCurrentPatternKey(key); setProgress(0); setSelectedFaceId(pat.root.id); }}
                   className={`w-full py-2 px-3 text-left text-xs font-bold rounded-lg border transition-all ${
                     currentPatternKey === key ? "bg-cyan-500 border-cyan-400 text-slate-950 shadow-md" : "bg-slate-700 border-slate-600 text-slate-300 hover:bg-slate-600"
                   }`}
@@ -267,9 +268,10 @@ export default function CubeQuestPage() {
           <ambientLight intensity={0.8} />
           <directionalLight position={[5, 10, 5]} intensity={0.6} />
 
-          {/* 🌟 基準となる展開図を水平に配置 */}
+          {/* 🌟 全体を2Dの床面として水平に配置 */}
           <group position={[0, 0, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-            {/* 底面（Root）を描画 */}
+            
+            {/* ① 底面（すべての親、完全に水平固定） */}
             <mesh position={[0, 0, 0]}>
               <planeGeometry args={[1, 1]} />
               <PrintedTextMaterial text={faces[currentPattern.root.id]?.text || "A"} rotate={faces[currentPattern.root.id]?.rotate || 0} color={currentPattern.root.color} />
