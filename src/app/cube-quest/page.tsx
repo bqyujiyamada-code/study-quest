@@ -33,7 +33,7 @@ export default function CubeQuestPage() {
           <ambientLight intensity={0.6} />
           <directionalLight position={[5, 8, 5]} intensity={0.8} />
 
-          {/* 🌟 立方体の展開図グループ */}
+{/* 🌟 立方体の展開図グループ */}
           <group position={[0, -0.5, 0]}>
             
             {/* ① 床（基準になる中央の底面） */}
@@ -45,8 +45,8 @@ export default function CubeQuestPage() {
               </Html>
             </mesh>
 
-            {/* ② 手前の面（手前に1マス離れて、上向きに折れる） */}
-            <group position={[0, 0, 0.5]} rotation={[-toRadian(currentAngle), 0, 0]}>
+            {/* ② 手前の面（上向きに起き上がるように 符号を + に修正） */}
+            <group position={[0, 0, 0.5]} rotation={[toRadian(currentAngle), 0, 0]}>
               <mesh position={[0, 0, 0.5]} rotation={[-Math.PI / 2, 0, 0]}>
                 <planeGeometry args={[1, 1]} />
                 <meshStandardMaterial color="#f43f5e" side={2} />
@@ -56,8 +56,8 @@ export default function CubeQuestPage() {
               </mesh>
             </group>
 
-            {/* ③ 奥の面（奥に1マス離れて、手前向きに折れる） */}
-            <group position={[0, 0, -0.5]} rotation={[toRadian(currentAngle), 0, 0]}>
+            {/* ③ 奥の面（上向きに起き上がるように 符号を - に修正） */}
+            <group position={[0, 0, -0.5]} rotation={[-toRadian(currentAngle), 0, 0]}>
               <mesh position={[0, 0, -0.5]} rotation={[-Math.PI / 2, 0, 0]}>
                 <planeGeometry args={[1, 1]} />
                 <meshStandardMaterial color="#10b981" side={2} />
@@ -67,8 +67,8 @@ export default function CubeQuestPage() {
               </mesh>
             </group>
 
-            {/* ④ 左の面（左に1マス離れて、右向きに折れる） */}
-            <group position={[-0.5, 0, 0]} rotation={[0, 0, toRadian(currentAngle)]}>
+            {/* ④ 左の面（上向きに起き上がるように 符号を - に修正） */}
+            <group position={[-0.5, 0, 0]} rotation={[0, 0, -toRadian(currentAngle)]}>
               <mesh position={[-0.5, 0, 0]} rotation={[-Math.PI / 2, 0, 0]}>
                 <planeGeometry args={[1, 1]} />
                 <meshStandardMaterial color="#eab308" side={2} />
@@ -78,8 +78,8 @@ export default function CubeQuestPage() {
               </mesh>
             </group>
 
-            {/* ⑤ 右の面（右に1マス離れて、左向きに折れる） */}
-            <group position={[0.5, 0, 0]} rotation={[0, 0, -toRadian(currentAngle)]}>
+            {/* ⑤ 右の面（上向きに起き上がるように 符号を + に修正） */}
+            <group position={[0.5, 0, 0]} rotation={[0, 0, toRadian(currentAngle)]}>
               <mesh position={[0.5, 0, 0]} rotation={[-Math.PI / 2, 0, 0]}>
                 <planeGeometry args={[1, 1]} />
                 <meshStandardMaterial color="#a855f7" side={2} />
