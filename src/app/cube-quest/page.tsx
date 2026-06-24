@@ -4,20 +4,18 @@ import React, { useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Html } from "@react-three/drei";
 
-// 角度をラジアンに変換するヘルパー関数
 const toRadian = (degree: number) => (degree * Math.PI) / 180;
 
 export default function CubeQuestPage() {
-  // スライダーの値（0: 展開図 〜 100: 立体完成）
   const [progress, setProgress] = useState<number>(0);
-
-  // progress (0-100) を回転角度 (0度〜90度) に変換
   const angle = (progress / 100) * 90;
-
-  // 展開図のパタパタを計算するための変数
   const rad = toRadian(angle);
-  const cos = Math.cos(rad);
-  const sin = Math.sin(rad);
+
+  // 📐 正しい回転軸（ヒンジ）を固定するための位置計算
+  // 0度のとき：height=0, offset=0.5 (隣の面の真横)
+  // 90度のとき：height=0.5, offset=0 (底面の真上の位置)
+  const height = 0.5 * Math.sin(rad);
+  const offset = 0.5 * Math.cos(rad);
 
   return (
     <div className="w-full h-screen bg-slate-900 flex flex-col items-center justify-center text-white select-none">
@@ -38,10 +36,9 @@ export default function CubeQuestPage() {
           <ambientLight intensity={0.6} />
           <directionalLight position={[5, 8, 5]} intensity={0.8} />
 
-          {/* 🌟 立方体の展開図グループ */}
           <group position={[0, -0.2, 0]}>
             
-            {/* ① 底面（中央：常に水平、位置も[0,0,0]から動かない） */}
+            {/* ① 底面（基準：完全に固定） */}
             <mesh rotation={[-Math.PI / 2, 0, 0]}>
               <planeGeometry args={[1, 1]} />
               <meshStandardMaterial color="#38bdf8" side={2} roughness={0.4} />
@@ -50,9 +47,9 @@ export default function CubeQuestPage() {
               </Html>
             </mesh>
 
-            {/* ② 手前の面（ピンク）：底面との境界 [0, 0, 0.5] を軸に回転 */}
+            {/* ② 手前の面（ピンク）：z=0.5 の辺を軸に起き上がる */}
             <mesh 
-              position={[0, 0.5 * sin, 0.5 + 0.5 * cos]} 
+              position={[0, height, 0.5 + offset]} 
               rotation={[-Math.PI / 2 + rad, 0, 0]}
             >
               <planeGeometry args={[1, 1]} />
@@ -62,9 +59,9 @@ export default function CubeQuestPage() {
               </Html>
             </mesh>
 
-            {/* ③ 奥の面（緑）：底面との境界 [0, 0, -0.5] を軸に回転 */}
+            {/* ③ 奥の面（緑）：z=-0.5 の辺を軸に起き上がる */}
             <mesh 
-              position={[0, 0.5 * sin, -0.5 - 0.5 * cos]} 
+              position={[0, height, -0.5 - offset]} 
               rotation={[-Math.PI / 2 - rad, 0, 0]}
             >
               <planeGeometry args={[1, 1]} />
@@ -74,9 +71,9 @@ export default function CubeQuestPage() {
               </Html>
             </mesh>
 
-            {/* ④ 左の面（黄色）：底面との境界 [-0.5, 0, 0] を軸に回転 */}
+            {/* ④ 左の面（黄色）：x=-0.5 の辺を軸に起き上がる */}
             <mesh 
-              position={[-0.5 - 0.5 * cos, 0.5 * sin, 0]} 
+              position={[-0.5 - offset, height, 0]} 
               rotation={[-Math.PI / 2, -rad, 0]}
             >
               <planeGeometry args={[1, 1]} />
@@ -86,9 +83,9 @@ export default function CubeQuestPage() {
               </Html>
             </mesh>
 
-            {/* ⑤ 右の面（紫）：底面との境界 [0.5, 0, 0] を軸に回転 */}
+            {/* ⑤ 右の面（紫）：x=0.5 の辺を軸に起き上がる */}
             <mesh 
-              position={[0.5 + 0.5 * cos, 0.5 * sin, 0]} 
+              position={[0.5 + offset, height, 0]} 
               rotation={[-Math.PI / 2, rad, 0]}
             >
               <planeGeometry args={[1, 1]} />
@@ -104,7 +101,7 @@ export default function CubeQuestPage() {
         </Canvas>
       </div>
 
-      {/* 🛠️ コントロールUI（スライダー） */}
+      {/* コントロールUI */}
       <div className="absolute bottom-12 w-11/12 max-w-md bg-slate-800/80 backdrop-blur-md p-6 rounded-2xl border border-slate-700/50 shadow-2xl z-10">
         <div className="flex justify-between items-center mb-3">
           <span className="text-sm font-medium text-slate-400">組み立て進捗</span>
