@@ -41,7 +41,7 @@ export default function CubeQuestPage() {
           {/* 🌟 立方体の展開図グループ */}
           <group position={[0, -0.2, 0]}>
             
-            {/* ① 底面（中央：常に水平） */}
+            {/* ① 底面（中央：常に水平、位置も[0,0,0]から動かない） */}
             <mesh rotation={[-Math.PI / 2, 0, 0]}>
               <planeGeometry args={[1, 1]} />
               <meshStandardMaterial color="#38bdf8" side={2} roughness={0.4} />
@@ -50,7 +50,7 @@ export default function CubeQuestPage() {
               </Html>
             </mesh>
 
-            {/* ② 手前の面（ピンク） */}
+            {/* ② 手前の面（ピンク）：底面との境界 [0, 0, 0.5] を軸に回転 */}
             <mesh 
               position={[0, 0.5 * sin, 0.5 + 0.5 * cos]} 
               rotation={[-Math.PI / 2 + rad, 0, 0]}
@@ -62,7 +62,7 @@ export default function CubeQuestPage() {
               </Html>
             </mesh>
 
-            {/* ③ 奥の面（緑） */}
+            {/* ③ 奥の面（緑）：底面との境界 [0, 0, -0.5] を軸に回転 */}
             <mesh 
               position={[0, 0.5 * sin, -0.5 - 0.5 * cos]} 
               rotation={[-Math.PI / 2 - rad, 0, 0]}
@@ -74,7 +74,7 @@ export default function CubeQuestPage() {
               </Html>
             </mesh>
 
-            {/* ④ 左の面（黄色） */}
+            {/* ④ 左の面（黄色）：底面との境界 [-0.5, 0, 0] を軸に回転 */}
             <mesh 
               position={[-0.5 - 0.5 * cos, 0.5 * sin, 0]} 
               rotation={[-Math.PI / 2, -rad, 0]}
@@ -86,7 +86,7 @@ export default function CubeQuestPage() {
               </Html>
             </mesh>
 
-            {/* ⑤ 右の面（紫） */}
+            {/* ⑤ 右の面（紫）：底面との境界 [0.5, 0, 0] を軸に回転 */}
             <mesh 
               position={[0.5 + 0.5 * cos, 0.5 * sin, 0]} 
               rotation={[-Math.PI / 2, rad, 0]}
