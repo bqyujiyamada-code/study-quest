@@ -12,7 +12,12 @@ export default function CubeQuestPage() {
   const [progress, setProgress] = useState<number>(0);
 
   // progress (0-100) を回転角度 (0度〜90度) に変換
-  const currentAngle = (progress / 100) * 90;
+  const angle = (progress / 100) * 90;
+
+  // 展開図のパタパタを計算するための変数
+  const rad = toRadian(angle);
+  const cos = Math.cos(rad);
+  const sin = Math.sin(rad);
 
   return (
     <div className="w-full h-screen bg-slate-900 flex flex-col items-center justify-center text-white select-none">
@@ -29,65 +34,69 @@ export default function CubeQuestPage() {
 
       {/* 3D空間 */}
       <div className="w-full h-full">
-        <Canvas camera={{ position: [0, 4, 5], fov: 50 }}>
+        <Canvas camera={{ position: [0, 3, 4], fov: 50 }}>
           <ambientLight intensity={0.6} />
           <directionalLight position={[5, 8, 5]} intensity={0.8} />
 
-          {/* 🌟 立方体の展開図グループ（全体を少し引きで見せるために少し下に配置） */}
-          <group position={[0, -0.5, 0]}>
+          {/* 🌟 立方体の展開図グループ */}
+          <group position={[0, -0.2, 0]}>
             
-            {/* ① 床（基準になる中央の底面：これは回転しない） */}
+            {/* ① 底面（中央：常に水平） */}
             <mesh rotation={[-Math.PI / 2, 0, 0]}>
               <planeGeometry args={[1, 1]} />
               <meshStandardMaterial color="#38bdf8" side={2} roughness={0.4} />
-              <Html position={[0, 0, 0.01]} center distanceFactor={4}>
-                <div className="text-xl font-black text-slate-900">底</div>
+              <Html position={[0, 0, 0.02]} center distanceFactor={4}>
+                <div className="text-sm font-black text-slate-900">底</div>
               </Html>
             </mesh>
 
-            {/* ② 手前の面：底面の手前の辺（z = 0.5）を軸に、内側（上）に90度起き上がる */}
-            <group position={[0, 0, 0.5]} rotation={[-toRadian(currentAngle), 0, 0]}>
-              <mesh position={[0, 0, 0.5]} rotation={[-Math.PI / 2, 0, 0]}>
-                <planeGeometry args={[1, 1]} />
-                <meshStandardMaterial color="#f43f5e" side={2} />
-                <Html position={[0, 0, 0.01]} center distanceFactor={4}>
-                  <div className="text-xl font-black text-slate-900">手前</div>
-                </Html>
-              </mesh>
-            </group>
+            {/* ② 手前の面（ピンク） */}
+            <mesh 
+              position={[0, 0.5 * sin, 0.5 + 0.5 * cos]} 
+              rotation={[-Math.PI / 2 + rad, 0, 0]}
+            >
+              <planeGeometry args={[1, 1]} />
+              <meshStandardMaterial color="#f43f5e" side={2} />
+              <Html position={[0, 0, 0.02]} center distanceFactor={4}>
+                <div className="text-sm font-black text-slate-900">手前</div>
+              </Html>
+            </mesh>
 
-            {/* ③ 奥の面：底面の奥の辺（z = -0.5）を軸に、内側（上）に90度起き上がる */}
-            <group position={[0, 0, -0.5]} rotation={[toRadian(currentAngle), 0, 0]}>
-              <mesh position={[0, 0, -0.5]} rotation={[-Math.PI / 2, 0, 0]}>
-                <planeGeometry args={[1, 1]} />
-                <meshStandardMaterial color="#10b981" side={2} />
-                <Html position={[0, 0, 0.01]} center distanceFactor={4}>
-                  <div className="text-xl font-black text-slate-900">奥</div>
-                </Html>
-              </mesh>
-            </group>
+            {/* ③ 奥の面（緑） */}
+            <mesh 
+              position={[0, 0.5 * sin, -0.5 - 0.5 * cos]} 
+              rotation={[-Math.PI / 2 - rad, 0, 0]}
+            >
+              <planeGeometry args={[1, 1]} />
+              <meshStandardMaterial color="#10b981" side={2} />
+              <Html position={[0, 0, 0.02]} center distanceFactor={4}>
+                <div className="text-sm font-black text-slate-900">奥</div>
+              </Html>
+            </mesh>
 
-            {/* ④ 左の面：底面の左の辺（x = -0.5）を軸に、内側（上）に90度起き上がる */}
-            <group position={[-0.5, 0, 0]} rotation={[0, 0, toRadian(currentAngle)]}>
-              <mesh position={[-0.5, 0, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-                <planeGeometry args={[1, 1]} />
-                <meshStandardMaterial color="#eab308" side={2} />
-                <Html position={[0, 0, 0.01]} center distanceFactor={4}>
-                  <div className="text-xl font-black text-slate-900">左</div>
-                </Html>
-              </mesh>
-            </group>
+            {/* ④ 左の面（黄色） */}
+            <mesh 
+              position={[-0.5 - 0.5 * cos, 0.5 * sin, 0]} 
+              rotation={[-Math.PI / 2, -rad, 0]}
+            >
+              <planeGeometry args={[1, 1]} />
+              <meshStandardMaterial color="#eab308" side={2} />
+              <Html position={[0, 0, 0.02]} center distanceFactor={4}>
+                <div className="text-sm font-black text-slate-900">左</div>
+              </Html>
+            </mesh>
 
-            {/* ⑤ 右の面：底面の右の辺（x = 0.5）を軸に、内側（上）に90度起き上がる */}
-            <group position={[0.5, 0, 0]} rotation={[0, 0, -toRadian(currentAngle)]}>
-              <mesh position={[0.5, 0, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-                <planeGeometry args={[1, 1]} />
-                <meshStandardMaterial color="#a855f7" side={2} />
-                <Html position={[0, 0, 0.01]} center distanceFactor={4}>
-                  <div className="text-xl font-black text-slate-900">右</div>
-                </Html>
-              </mesh>
-            </group>
+            {/* ⑤ 右の面（紫） */}
+            <mesh 
+              position={[0.5 + 0.5 * cos, 0.5 * sin, 0]} 
+              rotation={[-Math.PI / 2, rad, 0]}
+            >
+              <planeGeometry args={[1, 1]} />
+              <meshStandardMaterial color="#a855f7" side={2} />
+              <Html position={[0, 0, 0.02]} center distanceFactor={4}>
+                <div className="text-sm font-black text-slate-900">右</div>
+              </Html>
+            </mesh>
 
           </group>
 
