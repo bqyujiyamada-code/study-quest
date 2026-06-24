@@ -9,11 +9,44 @@ const toRadian = (degree: number) => (degree * Math.PI) / 180;
 
 type FaceConfig = { text: string; rotate: number; };
 
-const FACE_IDS = ["bottom", "front", "back", "top", "left", "right"];
+// 各面の定義：展開図の時の「初期位置の中心」と、組み立てる時の「回転軸（ヒンジ）」、および「回転方向」
+type FaceDefinition = {
+  id: string;
+  name: string;
+  color: string;
+  initialPos: [number, number, number]; // 展開図（0%）の時の中心座標 [x, y, z]
+  pivotPos: [number, number, number];   // 回転の軸となるフチの座標 [x, y, z]
+  axis: "X" | "Y";                      // 回転させる軸
+  sign: number;                         // 回転の方向（1 または -1）
+  isTopDependency?: boolean;            // Z型で天井に連動するかどうか
+};
 
-const PATTERNS: Record<string, { label: string }> = {
-  cross: { label: "① 十字型（基本）" },
-  zShape: { label: "② Z型（いなずま型）" }
+const PATTERNS: Record<string, { label: string; faces: FaceDefinition[] }> = {
+  cross: {
+    label: "① 十字型（基本）",
+    faces: [
+      { id: "bottom", name: "底面", color: "#38bdf8", initialPos: [0, 0, 0],   pivotPos: [0, 0, 0],    axis: "X", sign: 0 },
+      { id: "front",  name: "手前", color: "#f43f5e", initialPos: [0, -1, 0],  pivotPos: [0, -0.5, 0], axis: "X", sign: 1 },
+      { id: "back",   name: "奥面", color: "#10b981", initialPos: [0, 1, 0],   pivotPos: [0, 0.5, 0],  axis: "X", sign: -1 },
+      { id: "left",   name: "左面", color: "#eab308", initialPos: [-1, 0, 0],  pivotPos: [-0.5, 0, 0], axis: "Y", sign: -1 },
+      { id: "right",  name: "右面", color: "#a855f7", initialPos: [1, 0, 0],   pivotPos: [0.5, 0, 0],  axis: "Y", sign: 1 },
+      // 天井は「奥面」の回転軸 [0, 0.5] を中心に一緒に回りつつ、さらに自分のフチ [0, 1.5] で折れる
+      { id: "top",    name: "天井", color: "#ffffff", initialPos: [0, 2, 0],   pivotPos: [0, 1.5, 0],  axis: "X", sign: -1 }
+    ]
+  },
+  zShape: {
+    label: "② Z型（いなずま型）",
+    faces: [
+      { id: "bottom", name: "底面", color: "#38bdf8", initialPos: [0, 0, 0],   pivotPos: [0, 0, 0],    axis: "X", sign: 0 },
+      { id: "front",  name: "手前", color: "#f43f5e", initialPos: [0, -1, 0],  pivotPos: [0, -0.5, 0], axis: "X", sign: 1 },
+      { id: "back",   name: "奥面", color: "#10b981", initialPos: [0, 1, 0],   pivotPos: [0, 0.5, 0],  axis: "X", sign: -1 },
+      { id: "right",  name: "右面", color: "#a855f7", initialPos: [1, 0, 0],   pivotPos: [0.5, 0, 0],  axis: "Y", sign: 1 },
+      { id: "top",    name: "天井", color: "#ffffff", initialPos: [0, 2, 0],   pivotPos: [0, 1.5, 0],  axis: "X", sign: -1 },
+      // Z型の左面は、展開図の時点で [ -1, 2 ]（天井の左）に完璧に密着配置。
+      // 天井の動きに連動（isTopDependency）しながら、さらに自分のフチ [-0.5, 2.0] で折れる
+      { id: "left",   name: "左面", color: "#eab308", initialPos: [-1, 2, 0],  pivotPos: [-0.5, 2.0, 0], axis: "Y", sign: -1, isTopDependency: true }
+    ]
+  }
 };
 
 function PrintedTextMaterial({ text, rotate, color }: { text: string; rotate: number; color: string }) {
@@ -37,120 +70,90 @@ function PrintedTextMaterial({ text, rotate, color }: { text: string; rotate: nu
   );
 }
 
-function AbsoluteFoldableFace({ id, pattern, progress, faceConfig }: { id: string; pattern: string; progress: number; faceConfig: FaceConfig }) {
-  const meshRef = useRef<THREE.Mesh>(null);
-
-  const colors: Record<string, string> = {
-    bottom: "#38bdf8", front: "#f43f5e", back: "#10b981",
-    top: "#ffffff", left: "#eab308", right: "#a855f7"
-  };
+// 🌟 ヒンジ（蝶番）グループをローカルに挟むことで、100%ちぎれない回転を生むコンポーネント
+function SmartFoldableFace({ def, progress, faceConfig }: { def: FaceDefinition; progress: number; faceConfig: FaceConfig }) {
+  const pivotRef = useRef<THREE.Group>(null);
 
   useEffect(() => {
-    if (!meshRef.current) return;
+    if (!pivotRef.current) return;
 
-    // θ = 0° (0ラジアン) 〜 90° (π/2ラジアン)
-    const theta = (progress / 100) * (Math.PI / 2);
-    const cos = Math.cos(theta);
-    const sin = Math.sin(theta);
+    const angle = (progress / 100) * (Math.PI / 2); // 0 〜 90度
+    
+    // 一度すべての回転をリセット
+    pivotRef.current.rotation.set(0, 0, 0);
+    pivotRef.current.position.set(0, 0, 0);
 
-    let px = 0, py = 0, pz = 0;
-    let rx = 0, ry = 0, rz = 0;
-    let customQuaternion: THREE.Quaternion | null = null;
+    // 1️⃣ 基本的な面の回転処理
+    if (def.id !== "bottom") {
+      if (def.id === "top") {
+        // 天井は「奥面のフチ [0, 0.5]」を中心に全体のシステムが回り、さらに「自分のフチ [0, 1.5]」で回る
+        // これをThree.jsのマトリクス合成で美しく、絶対に千切れないように処理
+        const m1 = new THREE.Matrix4().makeRotationAxis(new THREE.Vector3(1, 0, 0), -angle); // 奥面の折れ
+        m1.setPosition(new THREE.Vector3(0, 0.5, 0));
 
-    if (pattern === "cross") {
-      // 🔷 十字型：隙間なし・めり込みなしの完全絶対座標
-      switch (id) {
-        case "bottom": // 原点固定
-          px = 0; py = 0; pz = 0;
-          break;
-        case "front": // 下のフチ [0, -0.5] を軸に手前が立ち上がる
-          px = 0;
-          py = -0.5 - 0.5 * cos;
-          pz = 0.5 * sin;
-          rx = theta;
-          break;
-        case "back": // 上のフチ [0, 0.5] を軸に奥面が立ち上がる
-          px = 0;
-          py = 0.5 + 0.5 * cos;
-          pz = 0.5 * sin;
-          rx = -theta;
-          break;
-        case "top": // 奥面の先端 [0, 1.5] のフチを軸に、さらに直角に折れて天井になる
-          px = 0;
-          py = 0.5 + cos + 0.5 * sin;
-          pz = sin - 0.5 * cos;
-          rx = -theta * 2;
-          break;
-        case "left": // 左のフチ [-0.5, 0] を軸に左面が立ち上がる
-          px = -0.5 - 0.5 * cos;
-          py = 0;
-          pz = 0.5 * sin;
-          ry = -theta; // 外側を向くように回転方向を修正
-          break;
-        case "right": // 右のフチ [0.5, 0] を軸に右面が立ち上がる
-          px = 0.5 + 0.5 * cos;
-          py = 0;
-          pz = 0.5 * sin;
-          ry = theta; // 外側を向くように回転方向を修正
-          break;
+        const m2 = new THREE.Matrix4().makeRotationAxis(new THREE.Vector3(1, 0, 0), -angle); // 天井自身の折れ
+        m2.setPosition(new THREE.Vector3(0, 1.0, 0)); // 奥面のフチから見た相対位置
+
+        const finalMatrix = new THREE.Matrix4().multiplyMatrices(m1, m2);
+        
+        // 最終的な位置と回転を抽出して適用
+        const pos = new THREE.Vector3();
+        const quad = new THREE.Quaternion();
+        finalMatrix.decompose(pos, quad, new THREE.Vector3());
+        
+        pivotRef.current.position.copy(pos);
+        pivotRef.current.quaternion.copy(quad);
+        return;
+      } 
+      
+      if (def.isTopDependency) {
+        // ⚡ Z型の左面：天井の回転マトリクスを完全にトレースし、さらに「自分のフチ [-0.5, 2.0]」でY軸回転する
+        const mTop1 = new THREE.Matrix4().makeRotationAxis(new THREE.Vector3(1, 0, 0), -angle);
+        mTop1.setPosition(new THREE.Vector3(0, 0.5, 0));
+        const mTop2 = new THREE.Matrix4().makeRotationAxis(new THREE.Vector3(1, 0, 0), -angle);
+        mTop2.setPosition(new THREE.Vector3(0, 1.0, 0));
+        const mTopFinal = new THREE.Matrix4().multiplyMatrices(mTop1, mTop2); // これで天井の位置
+
+        const mSelf = new THREE.Matrix4().makeRotationAxis(new THREE.Vector3(0, 1, 0), -angle); // 左面自身の折れ
+        mSelf.setPosition(new THREE.Vector3(-0.5, 0.5, 0)); // 天井の中心から見た左面ヒンジの相対位置
+
+        const finalMatrix = new THREE.Matrix4().multiplyMatrices(mTopFinal, mSelf);
+        
+        const pos = new THREE.Vector3();
+        const quad = new THREE.Quaternion();
+        finalMatrix.decompose(pos, quad, new THREE.Vector3());
+        
+        pivotRef.current.position.copy(pos);
+        pivotRef.current.quaternion.copy(quad);
+        return;
       }
-    } else {
-      // ⚡ Z型（いなずま型）：めり込み完全修正版
-      switch (id) {
-        case "bottom":
-          px = 0; py = 0; pz = 0;
-          break;
-        case "front":
-          px = 0;
-          py = -0.5 - 0.5 * cos;
-          pz = 0.5 * sin;
-          rx = theta;
-          break;
-        case "back":
-          px = 0;
-          py = 0.5 + 0.5 * cos;
-          pz = 0.5 * sin;
-          rx = -theta;
-          break;
-        case "top":
-          px = 0;
-          py = 0.5 + cos + 0.5 * sin;
-          pz = sin - 0.5 * cos;
-          rx = -theta * 2;
-          break;
-        case "left": // 🔴 天井(top)の左側 [-0.5, 2.0] に初期配置され、連動して折れる
-          // 0%のとき、正確に px = -1.0, py = 2.0, pz = 0 になるよう位相を完全一致させる
-          px = -0.5 - 0.5 * cos;
-          py = 0.5 + cos + 0.5 * sin;
-          pz = sin - 0.5 * cos + 0.5 * sin;
 
-          // 天井の回転（X軸に -theta*2）に、左面自体の折りたたみの回転（Y軸に -theta）を合成
-          const qTop = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -theta * 2);
-          const qSelf = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), -theta);
-          customQuaternion = new THREE.Quaternion().multiplyQuaternions(qTop, qSelf);
-          break;
-        case "right": // 底面の右側に結合
-          px = 0.5 + 0.5 * cos;
-          py = 0;
-          pz = 0.5 * sin;
-          ry = theta;
-          break;
+      // 通常の1段階折れる面（手前、奥、左、右）
+      // 回転軸（フチ）の位置へ移動させてから、指定された軸で回転させる
+      pivotRef.current.position.set(...def.pivotPos);
+      if (def.axis === "X") {
+        pivotRef.current.rotation.x = angle * def.sign;
+      } else {
+        pivotRef.current.rotation.y = angle * def.sign;
       }
     }
+  }, [progress, def]);
 
-    meshRef.current.position.set(px, py, pz);
-    if (customQuaternion) {
-      meshRef.current.quaternion.copy(customQuaternion);
-    } else {
-      meshRef.current.rotation.set(rx, ry, rz);
-    }
-  }, [progress, id, pattern]);
+  // メッシュ自体は、回転軸グループから見た「本来の中心位置」への相対座標に配置する
+  // 例：手前の初期中心 [0, -1, 0]、フチ [0, -0.5, 0] なら、相対位置は [0, -0.5, 0]
+  const localMeshPos: [number, number, number] = [
+    def.initialPos[0] - def.pivotPos[0],
+    def.initialPos[1] - def.pivotPos[1],
+    def.initialPos[2] - def.pivotPos[2]
+  ];
 
   return (
-    <mesh ref={meshRef}>
-      <planeGeometry args={[1, 1]} />
-      <PrintedTextMaterial text={faceConfig?.text || "❓"} rotate={faceConfig?.rotate || 0} color={colors[id]} />
-    </mesh>
+    <group ref={pivotRef}>
+      <mesh position={localMeshPos}>
+        <planeGeometry args={[1, 1]} />
+        <PrintedTextMaterial text={faceConfig?.text || "❓"} rotate={faceConfig?.rotate || 0} color={def.color} />
+      </mesh>
+    </group>
   );
 }
 
@@ -170,7 +173,7 @@ export default function CubeQuestPage() {
     <div className="w-full h-screen bg-slate-900 flex flex-col md:flex-row text-white overflow-hidden">
       <div className="w-full md:w-96 bg-slate-800 p-6 flex flex-col border-r border-slate-700 z-10 shadow-2xl">
         <h1 className="text-xl font-bold text-cyan-400 mb-1">📦 立体パタパタ実験室</h1>
-        <p className="text-xs text-slate-400 mb-6 font-medium">完全グリッド配置・絶対座標数理制御版</p>
+        <p className="text-xs text-slate-400 mb-6 font-medium">ピボットマトリクス制御・完全解決版</p>
 
         <div className="mb-6 space-y-2">
           <label className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">パターン選択</label>
@@ -191,8 +194,8 @@ export default function CubeQuestPage() {
           <div>
             <label className="text-[10px] text-slate-500 uppercase tracking-widest font-bold block mb-2">面を選択</label>
             <div className="grid grid-cols-3 gap-2">
-              {FACE_IDS.map(id => (
-                <button key={id} onClick={() => setSelectedFaceId(id)} className={`py-2 text-[10px] font-bold rounded border transition-all ${selectedFaceId === id ? "bg-cyan-500 border-cyan-400 text-slate-900" : "bg-slate-700 border-slate-600"}`}>{id === "bottom" ? "底面" : id === "front" ? "手前" : id === "back" ? "奥面" : id === "top" ? "天井" : id === "left" ? "左面" : "右面"}</button>
+              {currentPattern.faces.map(f => (
+                <button key={f.id} onClick={() => setSelectedFaceId(f.id)} className={`py-2 text-[10px] font-bold rounded border transition-all ${selectedFaceId === f.id ? "bg-cyan-500 border-cyan-400 text-slate-900" : "bg-slate-700 border-slate-600"}`}>{f.name}</button>
               ))}
             </div>
           </div>
@@ -215,13 +218,12 @@ export default function CubeQuestPage() {
           
           {/* XY平面を床面として配置 */}
           <group position={[0, -0.5, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-            {FACE_IDS.map(id => (
-              <AbsoluteFoldableFace 
-                key={id} 
-                id={id} 
-                pattern={currentPatternKey} 
+            {currentPattern.faces.map(face => (
+              <SmartFoldableFace 
+                key={face.id} 
+                def={face} 
                 progress={progress} 
-                faceConfig={faces[id]} 
+                faceConfig={faces[face.id]} 
               />
             ))}
           </group>
