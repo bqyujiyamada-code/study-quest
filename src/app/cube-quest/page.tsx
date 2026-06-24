@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Html } from "@react-three/drei";
 
+// 角度をラジアンに変換するヘルパー
 const toRadian = (degree: number) => (degree * Math.PI) / 180;
 
 export default function CubeQuestPage() {
@@ -20,68 +21,79 @@ export default function CubeQuestPage() {
           📦 展開図パタパタ実験室
         </h1>
         <p className="text-sm text-slate-400">
-          下のスライダーを動かして、組み立ててみよう！
+          文字が外側になるように下に折れて、完全なサイコロになるよ！
         </p>
       </div>
 
       {/* 3D空間 */}
       <div className="w-full h-full">
-        <Canvas camera={{ position: [0, 3, 4], fov: 50 }}>
+        <Canvas camera={{ position: [0, 4, 5], fov: 50 }}>
           <ambientLight intensity={0.6} />
           <directionalLight position={[5, 8, 5]} intensity={0.8} />
 
-          {/* 🌟 展開図全体のグループ */}
-          <group position={[0, 0, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          {/* 🌟 展開図全体のグループ（全体を少し上に浮かせて見やすく） */}
+          <group position={[0, 0.5, 0]} rotation={[-Math.PI / 2, 0, 0]}>
             
-            {/* ① 底面（中央：完全に固定の基準面） */}
+            {/* ① 底面（中央：完全に固定、文字は裏側=下から見えるように設定） */}
             <mesh position={[0, 0, 0]}>
               <planeGeometry args={[1, 1]} />
               <meshStandardMaterial color="#38bdf8" side={2} roughness={0.4} />
-              <Html position={[0, 0, 0.02]} center distanceFactor={4}>
-                <div className="text-sm font-black text-slate-900 transform rotate-90">底</div>
+              <Html position={[0, 0, -0.02]} center distanceFactor={4}>
+                <div className="text-sm font-black text-slate-900 transform rotate-90 scale-x-[-1]">底</div>
               </Html>
             </mesh>
 
-            {/* ② 手前の面（ピンク）：符号を -rad にして上向きに折る */}
-            <group position={[0, -0.5, 0]} rotation={[-rad, 0, 0]}>
+            {/* ② 手前の面（ピンク）：下向きに90度折れる */}
+            <group position={[0, -0.5, 0]} rotation={[rad, 0, 0]}>
               <mesh position={[0, -0.5, 0]}>
                 <planeGeometry args={[1, 1]} />
                 <meshStandardMaterial color="#f43f5e" side={2} />
-                <Html position={[0, 0, 0.02]} center distanceFactor={4}>
-                  <div className="text-sm font-black text-slate-900 transform rotate-90">手前</div>
+                <Html position={[0, 0, -0.02]} center distanceFactor={4}>
+                  <div className="text-sm font-black text-slate-900 transform rotate-90 scale-x-[-1]">手前</div>
                 </Html>
               </mesh>
             </group>
 
-            {/* ③ 奥の面（緑）：符号を rad にして上向きに折る */}
-            <group position={[0, 0.5, 0]} rotation={[rad, 0, 0]}>
+            {/* ③ 奥の面（緑）：下向きに90度折れる */}
+            <group position={[0, 0.5, 0]} rotation={[-rad, 0, 0]}>
               <mesh position={[0, 0.5, 0]}>
                 <planeGeometry args={[1, 1]} />
                 <meshStandardMaterial color="#10b981" side={2} />
-                <Html position={[0, 0, 0.02]} center distanceFactor={4}>
-                  <div className="text-sm font-black text-slate-900 transform rotate-90">奥</div>
+                <Html position={[0, 0, -0.02]} center distanceFactor={4}>
+                  <div className="text-sm font-black text-slate-900 transform rotate-90 scale-x-[-1]">奥</div>
                 </Html>
               </mesh>
+
+              {/* ⑥ 天井の面（白：フタ）：★奥の面の子要素にすることで、2段階で連動して折れる */}
+              <group position={[0, 1, 0]} rotation={[-rad, 0, 0]}>
+                <mesh position={[0, 0.5, 0]}>
+                  <planeGeometry args={[1, 1]} />
+                  <meshStandardMaterial color="#ffffff" side={2} />
+                  <Html position={[0, 0, -0.02]} center distanceFactor={4}>
+                    <div className="text-sm font-black text-slate-900 transform rotate-90 scale-x-[-1]">天井</div>
+                  </Html>
+                </mesh>
+              </group>
             </group>
 
-            {/* ④ 左の面（黄色）：符号を rad にして上向きに折る */}
-            <group position={[-0.5, 0, 0]} rotation={[0, rad, 0]}>
+            {/* ④ 左の面（黄色）：下向きに90度折れる */}
+            <group position={[-0.5, 0, 0]} rotation={[0, -rad, 0]}>
               <mesh position={[-0.5, 0, 0]}>
                 <planeGeometry args={[1, 1]} />
                 <meshStandardMaterial color="#eab308" side={2} />
-                <Html position={[0, 0, 0.02]} center distanceFactor={4}>
-                  <div className="text-sm font-black text-slate-900 transform rotate-90">左</div>
+                <Html position={[0, 0, -0.02]} center distanceFactor={4}>
+                  <div className="text-sm font-black text-slate-900 transform rotate-90 scale-x-[-1]">左</div>
                 </Html>
               </mesh>
             </group>
 
-            {/* ⑤ 右の面（紫）：符号を -rad にして上向きに折る */}
-            <group position={[0.5, 0, 0]} rotation={[0, -rad, 0]}>
+            {/* ⑤ 右の面（紫）：下向きに90度折れる */}
+            <group position={[0.5, 0, 0]} rotation={[0, rad, 0]}>
               <mesh position={[0.5, 0, 0]}>
                 <planeGeometry args={[1, 1]} />
                 <meshStandardMaterial color="#a855f7" side={2} />
-                <Html position={[0, 0, 0.02]} center distanceFactor={4}>
-                  <div className="text-sm font-black text-slate-900 transform rotate-90">右</div>
+                <Html position={[0, 0, -0.02]} center distanceFactor={4}>
+                  <div className="text-sm font-black text-slate-900 transform rotate-90 scale-x-[-1]">右</div>
                 </Html>
               </mesh>
             </group>
