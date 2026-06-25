@@ -25,13 +25,14 @@ const getValidPatterns = (): Record<string, FaceDef[]> => {
       {...r, pos:[1,0,0], pivot:[0.5,0,0], axis:"Y", sign:1, parent:"bottom"},
       {...t, pos:[0,2,0], pivot:[0,1.5,0], axis:"X", sign:-1, parent:"back"}
     ],
+
     "階段型": [
-      {...b, pos:[0,0,0], pivot:[0,0,0], axis:"X", sign:0},
-      {...f, pos:[0,-1,0], pivot:[0,-0.5,0], axis:"X", sign:1, parent:"bottom"},
-      {...l, pos:[-1,-1,0], pivot:[-0.5,-1,0], axis:"Y", sign:-1, parent:"front"},
-      {...r, pos:[1,0,0], pivot:[0.5,0,0], axis:"Y", sign:1, parent:"bottom"},
-      {...bk, pos:[1,1,0], pivot:[1,0.5,0], axis:"X", sign:-1, parent:"right"},
-      {...t, pos:[0,1,0], pivot:[0,0.5,0], axis:"Y", sign:1, parent:"right"}
+      {id: "b1", name: "底面1", color: "#0ea5e9", pos: [0,0,0], pivot: [0,0,0], axis: "X", sign: 0},
+      {id: "b2", name: "底面2", color: "#0ea5e9", pos: [0,1,0], pivot: [0,0.5,0], axis: "X", sign: 1, parent: "b1"},
+      {id: "f1", name: "側面1", color: "#f43f5e", pos: [0,1,0], pivot: [0,0.5,0], axis: "Y", sign: 1, parent: "b2"},
+      {id: "f2", name: "側面2", color: "#f43f5e", pos: [1,1,0], pivot: [1,0.5,0], axis: "X", sign: -1, parent: "f1"},
+      {id: "t1", name: "天井1", color: "#f8fafc", pos: [1,1,0], pivot: [1,0.5,0], axis: "Y", sign: -1, parent: "f2"},
+      {id: "t2", name: "天井2", color: "#f8fafc", pos: [1,2,0], pivot: [1,1.5,0], axis: "X", sign: 1, parent: "t1"} 
     ],
     "L字型": [
       {...b, pos:[0,0,0], pivot:[0,0,0], axis:"X", sign:0},
