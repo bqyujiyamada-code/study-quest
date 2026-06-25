@@ -12,7 +12,12 @@ type FaceConfig = { text: string; rotation: number };
 // --- 定数 ---
 const COLORS = { b: "#0ea5e9", f: "#f43f5e", bk: "#10b981", l: "#eab308", r: "#a855f7", t: "#f8fafc" };
 
-// --- パターンデータ ---
+// 直感的な名前のマップ
+const FACE_LABELS: Record<string, string> = {
+  b: "青面", f: "赤面", bk: "緑面", l: "黄面", r: "紫面", t: "白面",
+  c1: "中央1", c2: "中央2", c3: "中央3", left: "左面", r1: "右1", r2: "右2", r3: "右3"
+};
+
 const getPatterns = (): Record<string, FaceDef[]> => ({
   "1-4-1-a (十字)": [
     { id: "b", color: COLORS.b, pos: [0, 0, 0], pivot: [0, 0, 0], axis: "X", sign: 0 },
@@ -104,7 +109,6 @@ const getPatterns = (): Record<string, FaceDef[]> => ({
   ]
 });
 
-// --- コンポーネント ---
 function FaceInstance({ def, progress, allFaces, config, isSelected }: { def: FaceDef; progress: number; allFaces: FaceDef[]; config: FaceConfig; isSelected: boolean }) {
   const groupRef = useRef<THREE.Group>(null);
   
@@ -169,15 +173,16 @@ export default function CubeQuestPage() {
             <h3 style={{ margin: "0 0 10px 0" }}>編集する面を選択</h3>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "8px", marginBottom: "16px" }}>
               {currentFaces.map((f) => (
-                <button key={f.id} onClick={() => setSelectedId(f.id)} style={{ padding: "10px", background: selectedId === f.id ? "#38bdf8" : "#475569", border: "none", borderRadius: "6px", color: "white", fontWeight: "bold" }}>{f.id}</button>
+                <button key={f.id} onClick={() => setSelectedId(f.id)} style={{ padding: "10px", background: selectedId === f.id ? "#38bdf8" : "#475569", border: "none", borderRadius: "6px", color: "white", fontWeight: "bold" }}>
+                  {FACE_LABELS[f.id] || f.id}
+                </button>
               ))}
             </div>
             
-            {/* 選択中の面がある場合のみ編集UIを表示 */}
             {selectedId && (
               <div style={{ borderTop: "1px solid #64748b", paddingTop: "16px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
-                  <p style={{ margin: 0 }}>選択中: <strong>面 {selectedId}</strong></p>
+                  <p style={{ margin: 0 }}>選択中: <strong>{FACE_LABELS[selectedId] || selectedId}</strong></p>
                   <button onClick={() => setSelectedId(null)} style={{ padding: "8px 16px", background: "#22c55e", border: "none", borderRadius: "6px", color: "white" }}>編集完了</button>
                 </div>
                 <input placeholder="文字を入力..." value={faceConfigs[selectedId]?.text || ""} onChange={(e) => setFaceConfigs(prev => ({...prev, [selectedId]: {...(prev[selectedId] || {text: "", rotation: 0}), text: e.target.value}}))} style={{ width: "100%", padding: "12px", fontSize: "16px", borderRadius: "6px", border: "none", boxSizing: "border-box" }} />
