@@ -60,13 +60,14 @@ const getPatterns = (): Record<string, FaceDef[]> => ({
     { id: "r", color: COLORS.r, pos: [1, -1, 0], pivot: [0.5, -1, 0], axis: "Y", sign: 1, parent: "f" }
   ],
   // 1-3-2型 (3種) - 木構造による干渉回避定義
-  "1-3-2-a (1が一番上)": [
-    { id: "m", color: COLORS.f, pos: [0, 0, 0], pivot: [0, 0, 0], axis: "X", sign: 0 }, // 中央列中心
-    { id: "b", color: COLORS.b, pos: [0, -1, 0], pivot: [0, -0.5, 0], axis: "X", sign: 1, parent: "m" },
-    { id: "t", color: COLORS.t, pos: [0, 1, 0], pivot: [0, 0.5, 0], axis: "X", sign: -1, parent: "m" },
-    { id: "one", color: COLORS.l, pos: [-1, 1, 0], pivot: [-0.5, 1, 0], axis: "Y", sign: -1, parent: "t" }, // 1が一番上
-    { id: "r1", color: COLORS.r, pos: [1, 1, 0], pivot: [0.5, 1, 0], axis: "Y", sign: 1, parent: "t" }, // 2の右翼接続
-    { id: "r2", color: COLORS.bk, pos: [2, 1, 0], pivot: [1.5, 1, 0], axis: "Y", sign: 1, parent: "r1" }
+  "1-3-2型": [
+    // 中央の3列 (基準)
+    { id: "c1", color: COLORS.red, pos: [0, 0, 0], pivot: [0, 0, 0], axis: "X", sign: 0 },
+    { id: "c2", color: COLORS.gray, pos: [0, 1, 0], pivot: [0, 0.5, 0], axis: "X", sign: 1, parent: "c1" },
+    { id: "c3", color: COLORS.blue, pos: [0, -1, 0], pivot: [0, -0.5, 0], axis: "X", sign: -1, parent: "c1" },
+    { id: "left", color: COLORS.gold, pos: [-1, 1, 0], pivot: [-0.5, 1, 0], axis: "Y", sign: -1, parent: "c2" },
+    { id: "r1", color: COLORS.purple, pos: [1, 1, 0], pivot: [0.5, 1, 0], axis: "Y", sign: 1, parent: "c2" },
+    { id: "r2", color: COLORS.green, pos: [1, 2, 0], pivot: [1, 1.5, 0], axis: "X", sign: 1, parent: "r1" }
   ],
   "1-3-2-b (1が中央)": [
     { id: "m", color: COLORS.f, pos: [0, 0, 0], pivot: [0, 0, 0], axis: "X", sign: 0 },
