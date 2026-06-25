@@ -127,13 +127,32 @@ function FaceInstance({
     groupRef.current.matrixAutoUpdate = false;
   }, [progress, def, allFaces]);
 
-  return (
+return (
     <group ref={groupRef}>
       <mesh position={def.pos} onClick={(e) => { e.stopPropagation(); onClick(); }}>
         <planeGeometry args={[0.9, 0.9]} />
         <meshStandardMaterial color={isSelected ? "#ffffff" : def.color} side={THREE.DoubleSide} />
-        <Html position={[0, 0, 0.05]} transform occlude distanceFactor={2}>
-          <div style={{ fontSize: "100px", fontWeight: "bold", color: isSelected ? "black" : "white", transform: `rotate(${config.rotation}deg)`, userSelect: "none" }}>
+        
+        {/* Htmlの配置を調整 */}
+        <Html 
+          position={[0, 0, 0.05]} 
+          transform 
+          occlude 
+          distanceFactor={2}
+          center // ★ここが重要：Html要素自体をメッシュの中心に配置する
+        >
+          <div style={{ 
+            width: "90px", 
+            height: "90px", 
+            display: "flex", 
+            alignItems: "center", 
+            justifyContent: "center", 
+            fontSize: "60px", 
+            fontWeight: "bold", 
+            color: isSelected ? "black" : "white", 
+            transform: `rotate(${config.rotation}deg)`, // ここで回転
+            userSelect: "none"
+          }}>
             {config.text}
           </div>
         </Html>
