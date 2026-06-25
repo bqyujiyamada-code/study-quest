@@ -5,8 +5,11 @@ import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Html } from "@react-three/drei";
 import * as THREE from "three";
 
+// --- 型定義 ---
 type FaceDef = { id: string; color: string; pos: [number, number, number]; pivot: [number, number, number]; axis: "X" | "Y"; sign: number; parent?: string };
+type FaceConfig = { text: string; rotation: number };
 
+// --- 定数 ---
 const COLORS = { b: "#0ea5e9", f: "#f43f5e", bk: "#10b981", l: "#eab308", r: "#a855f7", t: "#f8fafc" };
 
 const getPatterns = (): Record<string, FaceDef[]> => ({
