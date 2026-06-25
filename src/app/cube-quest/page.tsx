@@ -7,7 +7,15 @@ import * as THREE from "three";
 
 type FaceDef = { id: string; color: string; pos: [number, number, number]; pivot: [number, number, number]; axis: "X" | "Y"; sign: number; parent?: string };
 
-const COLORS = { b: "#0ea5e9", f: "#f43f5e", bk: "#10b981", l: "#eab308", r: "#a855f7", t: "#f8fafc" };
+// カラーパレットを定義（すべての色キーを網羅しました）
+const COLORS = { 
+  b: "#0ea5e9", // Blue
+  f: "#f43f5e", // Red
+  bk: "#10b981", // Green
+  l: "#eab308", // Gold
+  r: "#a855f7", // Purple
+  t: "#f8fafc"  // Gray/White
+};
 
 const getPatterns = (): Record<string, FaceDef[]> => ({
   // 1-4-1型 (6種)
@@ -62,12 +70,16 @@ const getPatterns = (): Record<string, FaceDef[]> => ({
   // 1-3-2型 (3種) - 木構造による干渉回避定義
   "1-3-2型": [
     // 中央の3列 (基準)
-    { id: "c1", color: COLORS.red, pos: [0, 0, 0], pivot: [0, 0, 0], axis: "X", sign: 0 },
-    { id: "c2", color: COLORS.gray, pos: [0, 1, 0], pivot: [0, 0.5, 0], axis: "X", sign: 1, parent: "c1" },
-    { id: "c3", color: COLORS.blue, pos: [0, -1, 0], pivot: [0, -0.5, 0], axis: "X", sign: -1, parent: "c1" },
-    { id: "left", color: COLORS.gold, pos: [-1, 1, 0], pivot: [-0.5, 1, 0], axis: "Y", sign: -1, parent: "c2" },
-    { id: "r1", color: COLORS.purple, pos: [1, 1, 0], pivot: [0.5, 1, 0], axis: "Y", sign: 1, parent: "c2" },
-    { id: "r2", color: COLORS.green, pos: [1, 2, 0], pivot: [1, 1.5, 0], axis: "X", sign: 1, parent: "r1" }
+    { id: "c1", color: COLORS.f, pos: [0, 0, 0], pivot: [0, 0, 0], axis: "X", sign: 0 },
+    { id: "c2", color: COLORS.t, pos: [0, 1, 0], pivot: [0, 0.5, 0], axis: "X", sign: 1, parent: "c1" },
+    { id: "c3", color: COLORS.b, pos: [0, -1, 0], pivot: [0, -0.5, 0], axis: "X", sign: -1, parent: "c1" },
+    
+    // 左の1面 (c2の左に接続)
+    { id: "left", color: COLORS.l, pos: [-1, 1, 0], pivot: [-0.5, 1, 0], axis: "Y", sign: -1, parent: "c2" },
+    
+    // 右の2面 (c2の右に接続し、そこから上に伸びる)
+    { id: "r1", color: COLORS.r, pos: [1, 1, 0], pivot: [0.5, 1, 0], axis: "Y", sign: 1, parent: "c2" },
+    { id: "r2", color: COLORS.bk, pos: [1, 2, 0], pivot: [1, 1.5, 0], axis: "X", sign: 1, parent: "r1" }
   ],
   "1-3-2-b (1が中央)": [
     { id: "m", color: COLORS.f, pos: [0, 0, 0], pivot: [0, 0, 0], axis: "X", sign: 0 },
