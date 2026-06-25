@@ -60,29 +60,29 @@ const getPatterns = (): Record<string, FaceDef[]> => ({
     { id: "r", color: COLORS.r, pos: [1, -1, 0], pivot: [0.5, -1, 0], axis: "Y", sign: 1, parent: "f" }
   ],
   // 1-3-2型 (3種) - 木構造による干渉回避定義
-  "1-3-2-a": [
-    { id: "b", color: COLORS.b, pos: [0, 0, 0], pivot: [0, 0, 0], axis: "X", sign: 0 }, // 3の底
-    { id: "m", color: COLORS.f, pos: [0, 1, 0], pivot: [0, 0.5, 0], axis: "X", sign: 1, parent: "b" }, // 3の中央
-    { id: "t", color: COLORS.t, pos: [0, 2, 0], pivot: [0, 1.5, 0], axis: "X", sign: 1, parent: "m" }, // 3の最上
-    { id: "s1", color: COLORS.l, pos: [1, 2, 0], pivot: [0.5, 2, 0], axis: "Y", sign: 1, parent: "t" }, // 2の下
-    { id: "s2", color: COLORS.r, pos: [2, 2, 0], pivot: [1.5, 2, 0], axis: "Y", sign: 1, parent: "s1" }, // 2の最上
-    { id: "side", color: COLORS.bk, pos: [0, 0, -1], pivot: [0, 0, -0.5], axis: "Y", sign: -1, parent: "b" } // 1が3の底の横
-  ],
-  "1-3-2-b": [
+"1-3-2-a (1が一番上)": [
     { id: "b", color: COLORS.b, pos: [0, 0, 0], pivot: [0, 0, 0], axis: "X", sign: 0 },
-    { id: "f", color: COLORS.f, pos: [0, -1, 0], pivot: [0, -0.5, 0], axis: "X", sign: 1, parent: "b" },
-    { id: "bk", color: COLORS.bk, pos: [0, 1, 0], pivot: [0, 0.5, 0], axis: "X", sign: -1, parent: "b" },
-    { id: "l", color: COLORS.l, pos: [-1, 0, 0], pivot: [-0.5, 0, 0], axis: "Y", sign: -1, parent: "b" },
-    { id: "r", color: COLORS.r, pos: [1, 0, 0], pivot: [0.5, 0, 0], axis: "Y", sign: 1, parent: "b" },
-    { id: "t", color: COLORS.t, pos: [1, 1, 0], pivot: [1, 0.5, 0], axis: "X", sign: -1, parent: "r" }
+    { id: "m", color: COLORS.f, pos: [0, 1, 0], pivot: [0, 0.5, 0], axis: "X", sign: 1, parent: "b" },
+    { id: "t", color: COLORS.t, pos: [0, 2, 0], pivot: [0, 1.5, 0], axis: "X", sign: 1, parent: "m" }, // 3列目
+    { id: "s1", color: COLORS.l, pos: [1, 2, 0], pivot: [0.5, 2, 0], axis: "Y", sign: 1, parent: "t" }, // 2列目の下
+    { id: "s2", color: COLORS.bk, pos: [2, 2, 0], pivot: [1.5, 2, 0], axis: "Y", sign: 1, parent: "s1" }, // 2列目の上
+    { id: "one", color: COLORS.r, pos: [-1, 2, 0], pivot: [-0.5, 2, 0], axis: "Y", sign: -1, parent: "t" } // 1の位置
   ],
-  "1-3-2-c": [
+  "1-3-2-b (1が真ん中)": [
     { id: "b", color: COLORS.b, pos: [0, 0, 0], pivot: [0, 0, 0], axis: "X", sign: 0 },
-    { id: "f", color: COLORS.f, pos: [0, -1, 0], pivot: [0, -0.5, 0], axis: "X", sign: 1, parent: "b" },
-    { id: "bk", color: COLORS.bk, pos: [0, 1, 0], pivot: [0, 0.5, 0], axis: "X", sign: -1, parent: "b" },
-    { id: "l", color: COLORS.l, pos: [-1, 0, 0], pivot: [-0.5, 0, 0], axis: "Y", sign: -1, parent: "b" },
-    { id: "t", color: COLORS.t, pos: [-1, 1, 0], pivot: [-1, 0.5, 0], axis: "X", sign: -1, parent: "l" },
-    { id: "r", color: COLORS.r, pos: [-2, 1, 0], pivot: [-1.5, 1, 0], axis: "Y", sign: -1, parent: "t" }
+    { id: "m", color: COLORS.f, pos: [0, 1, 0], pivot: [0, 0.5, 0], axis: "X", sign: 1, parent: "b" },
+    { id: "t", color: COLORS.t, pos: [0, 2, 0], pivot: [0, 1.5, 0], axis: "X", sign: 1, parent: "m" },
+    { id: "s1", color: COLORS.l, pos: [1, 2, 0], pivot: [0.5, 2, 0], axis: "Y", sign: 1, parent: "t" },
+    { id: "s2", color: COLORS.bk, pos: [2, 2, 0], pivot: [1.5, 2, 0], axis: "Y", sign: 1, parent: "s1" },
+    { id: "one", color: COLORS.r, pos: [-1, 1, 0], pivot: [-0.5, 1, 0], axis: "Y", sign: -1, parent: "m" } // 1の位置
+  ],
+  "1-3-2-c (1が一番下)": [
+    { id: "b", color: COLORS.b, pos: [0, 0, 0], pivot: [0, 0, 0], axis: "X", sign: 0 },
+    { id: "m", color: COLORS.f, pos: [0, 1, 0], pivot: [0, 0.5, 0], axis: "X", sign: 1, parent: "b" },
+    { id: "t", color: COLORS.t, pos: [0, 2, 0], pivot: [0, 1.5, 0], axis: "X", sign: 1, parent: "m" },
+    { id: "s1", color: COLORS.l, pos: [1, 2, 0], pivot: [0.5, 2, 0], axis: "Y", sign: 1, parent: "t" },
+    { id: "s2", color: COLORS.bk, pos: [2, 2, 0], pivot: [1.5, 2, 0], axis: "Y", sign: 1, parent: "s1" },
+    { id: "one", color: COLORS.r, pos: [-1, 0, 0], pivot: [-0.5, 0, 0], axis: "Y", sign: -1, parent: "b" } // 1の位置
   ],
   // 階段型 (2-2-2)
   "階段型 (2-2-2)": [
