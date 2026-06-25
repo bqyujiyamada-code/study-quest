@@ -9,15 +9,23 @@ import * as THREE from "three";
 type FaceDef = { id: string; color: string; pos: [number, number, number]; pivot: [number, number, number]; axis: "X" | "Y"; sign: number; parent?: string };
 type FaceConfig = { text: string; rotation: number };
 
-// --- 変更不可な定数 ---
+// --- 変更不可 ---
 const COLORS = { b: "#0ea5e9", f: "#f43f5e", bk: "#10b981", l: "#eab308", r: "#a855f7", t: "#f8fafc" };
 
-// --- 表示名マッピング ---
-const FACE_LABELS: Record<string, string> = {
-  b: "青面", f: "赤面", bk: "緑面", l: "黄面", r: "紫面", t: "白面"
+// --- 色コードから名前を逆引きする関数 ---
+const getColorName = (colorCode: string) => {
+  const map: Record<string, string> = {
+    [COLORS.b]: "青面",
+    [COLORS.f]: "赤面",
+    [COLORS.bk]: "緑面",
+    [COLORS.l]: "黄面",
+    [COLORS.r]: "紫面",
+    [COLORS.t]: "白面"
+  };
+  return map[colorCode] || "不明";
 };
 
-// --- パターン定義 (そのまま維持) ---
+// --- パターン定義 (ここを省略) ---
 const getPatterns = (): Record<string, FaceDef[]> => ({
   "1-4-1-a (十字)": [
     { id: "b", color: COLORS.b, pos: [0, 0, 0], pivot: [0, 0, 0], axis: "X", sign: 0 },
@@ -112,6 +120,7 @@ const getPatterns = (): Record<string, FaceDef[]> => ({
 // --- コンポーネント定義 ---
 function FaceInstance({ def, progress, allFaces, config, isSelected }: { def: FaceDef; progress: number; allFaces: FaceDef[]; config: FaceConfig; isSelected: boolean }) {
   const groupRef = useRef<THREE.Group>(null);
+  
   useEffect(() => {
     if (!groupRef.current) return;
     const getMatrix = (target: FaceDef): THREE.Matrix4 => {
@@ -174,7 +183,8 @@ export default function CubeQuestPage() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "8px", marginBottom: "16px" }}>
               {currentFaces.map((f) => (
                 <button key={f.id} onClick={() => setSelectedId(f.id)} style={{ padding: "10px", background: selectedId === f.id ? "#38bdf8" : "#475569", border: "none", borderRadius: "6px", color: "white", fontWeight: "bold" }}>
-                  {FACE_LABELS[f.id] || f.id}
+                  {/* IDではなく色の名前を参照 */}
+                  {getColorName(f.color)}
                 </button>
               ))}
             </div>
@@ -182,7 +192,7 @@ export default function CubeQuestPage() {
             {selectedId && (
               <div style={{ borderTop: "1px solid #64748b", paddingTop: "16px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
-                  <p style={{ margin: 0 }}>選択中: <strong>{FACE_LABELS[selectedId] || selectedId}</strong></p>
+                  <p style={{ margin: 0 }}>選択中: <strong>{getColorName(currentFaces.find(f => f.id === selectedId)?.color || "")}</strong></p>
                   <button onClick={() => setSelectedId(null)} style={{ padding: "8px 16px", background: "#22c55e", border: "none", borderRadius: "6px", color: "white" }}>編集完了</button>
                 </div>
                 <input placeholder="文字を入力..." value={faceConfigs[selectedId]?.text || ""} onChange={(e) => setFaceConfigs(prev => ({...prev, [selectedId]: {...(prev[selectedId] || {text: "", rotation: 0}), text: e.target.value}}))} style={{ width: "100%", padding: "12px", fontSize: "16px", borderRadius: "6px", border: "none", boxSizing: "border-box" }} />
@@ -196,7 +206,6 @@ export default function CubeQuestPage() {
           </div>
         )}
       </div>
-      
       <div style={{ flex: 1, position: "relative" }}>
         <Canvas camera={{ position: [0, 4, 8], fov: 50 }}>
           <ambientLight intensity={0.8} />
