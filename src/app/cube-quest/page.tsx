@@ -6,11 +6,9 @@ import { OrbitControls, Html } from "@react-three/drei";
 import * as THREE from "three";
 
 type FaceDef = { id: string; color: string; pos: [number, number, number]; pivot: [number, number, number]; axis: "X" | "Y"; sign: number; parent?: string };
-type FaceConfig = { text: string; rotation: number };
 
 const COLORS = { b: "#0ea5e9", f: "#f43f5e", bk: "#10b981", l: "#eab308", r: "#a855f7", t: "#f8fafc" };
 
-// 面の定義はそのままに、状態を管理する構造にします
 const getPatterns = (): Record<string, FaceDef[]> => ({
   "1-4-1-a (十字)": [
     { id: "b", color: COLORS.b, pos: [0, 0, 0], pivot: [0, 0, 0], axis: "X", sign: 0 },
@@ -102,11 +100,8 @@ const getPatterns = (): Record<string, FaceDef[]> => ({
   ]
 });
 
-function FaceInstance({ def, progress, allFaces, config, onClick }: { 
-  def: FaceDef; progress: number; allFaces: FaceDef[]; config: FaceConfig; onClick: () => void 
-}) {
+function FaceInstance({ def, progress, allFaces }: { def: FaceDef; progress: number; allFaces: FaceDef[] }) {
   const groupRef = useRef<THREE.Group>(null);
-  
   useEffect(() => {
     if (!groupRef.current) return;
     const getMatrix = (target: FaceDef): THREE.Matrix4 => {
@@ -124,52 +119,41 @@ function FaceInstance({ def, progress, allFaces, config, onClick }: {
     groupRef.current.matrix.copy(getMatrix(def));
     groupRef.current.matrixAutoUpdate = false;
   }, [progress, def, allFaces]);
-
-  return (
-    <group ref={groupRef}>
-      <mesh position={def.pos} onClick={(e) => { e.stopPropagation(); onClick(); }}>
-        <planeGeometry args={[0.9, 0.9]} />
-        <meshStandardMaterial color={def.color} side={THREE.DoubleSide} />
-        <Html position={[0, 0, 0.05]} transform occlude distanceFactor={2}>
-          <div style={{ 
-            fontSize: "100px", fontWeight: "bold", color: "white", 
-            transform: `rotate(${config.rotation}deg)`,
-            userSelect: "none"
-          }}>
-            {config.text}
-          </div>
-        </Html>
-      </mesh>
-    </group>
-  );
+  return <group ref={groupRef}><mesh position={def.pos}><planeGeometry args={[0.9, 0.9]} /><meshStandardMaterial color={def.color} side={THREE.DoubleSide} /></mesh></group>;
 }
 
 export default function CubeQuestPage() {
   const [key, setKey] = useState("1-4-1-a (十字)");
   const [progress, setProgress] = useState(0);
-  const [faceConfigs, setFaceConfigs] = useState<Record<string, FaceConfig>>({});
+  const [faceConfigs, setFaceConfigs] = useState<Record<string, { text: string; rotation: number }>>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
   
   const patterns = useMemo(getPatterns, []);
   const currentFaces = patterns[key];
 
-  const updateConfig = (id: string, newConfig: Partial<FaceConfig>) => {
-    setFaceConfigs(prev => ({ ...prev, [id]: { ...prev[id], ...{text: "", rotation: 0}, ...newConfig } }));
-  };
-
   return (
-    <div style={{ width: "100%", height: "100vh", display: "flex", background: "#020617", color: "white" }}>
-      <div style={{ width: "300px", padding: "20px", background: "#0f172a" }}>
-        <h2>設定パネル</h2>
-        {selectedId ? (
-          <div>
-            <p>面ID: {selectedId}</p>
-            <input placeholder="文字入力" value={faceConfigs[selectedId]?.text || ""} onChange={(e) => updateConfig(selectedId, { text: e.target.value })} />
-            <input type="range" min="0" max="360" value={faceConfigs[selectedId]?.rotation || 0} onChange={(e) => updateConfig(selectedId, { rotation: Number(e.target.value) })} />
+    <div style={{ 
+      width: "100%", height: "100vh", display: "flex", 
+      flexDirection: "column", // モバイル優先の縦積みレイアウト
+      background: "#020617", color: "white", fontFamily: "sans-serif" 
+    }}>
+      {/* 操作・設定エリア */}
+      <div style={{ padding: "16px", background: "#0f172a", zIndex: 10 }}>
+        <select value={key} onChange={(e) => {setKey(e.target.value); setProgress(0); setSelectedId(null);}} 
+          style={{ width: "100%", padding: "12px", background: "#1e293b", color: "white", marginBottom: "10px" }}>
+          {Object.keys(patterns).map(k => <option key={k} value={k}>{k}</option>)}
+        </select>
+        
+        {/* 面選択時のみパネルを表示 */}
+        {selectedId && (
+          <div style={{ background: "#1e293b", padding: "10px", borderRadius: "8px" }}>
+            <input placeholder="文字入力" value={faceConfigs[selectedId]?.text || ""} onChange={(e) => setFaceConfigs(prev => ({...prev, [selectedId]: {...prev[selectedId], text: e.target.value}}))} />
+            <input type="range" min="0" max="360" value={faceConfigs[selectedId]?.rotation || 0} onChange={(e) => setFaceConfigs(prev => ({...prev, [selectedId]: {...prev[selectedId], rotation: Number(e.target.value)}}))} />
           </div>
-        ) : <p>面を選択してください</p>}
+        )}
       </div>
       
+      {/* 3D表示エリア */}
       <div style={{ flex: 1, position: "relative" }}>
         <Canvas camera={{ position: [0, 4, 8], fov: 50 }}>
           <ambientLight intensity={0.8} />
@@ -183,7 +167,11 @@ export default function CubeQuestPage() {
           </group>
           <OrbitControls />
         </Canvas>
-        <input type="range" min="0" max="100" value={progress} onChange={(e) => setProgress(Number(e.target.value))} style={{ position: "absolute", bottom: 20, width: "80%", left: "10%" }} />
+        
+        {/* スライダーは画面下部に固定 */}
+        <div style={{ position: "absolute", bottom: "20px", width: "100%", padding: "0 20px" }}>
+          <input type="range" min="0" max="100" value={progress} onChange={(e) => setProgress(Number(e.target.value))} style={{ width: "100%" }} />
+        </div>
       </div>
     </div>
   );
