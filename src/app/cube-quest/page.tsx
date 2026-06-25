@@ -5,39 +5,31 @@ import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 
-// --- 型定義 ---
-type FaceDef = {
-  id: string;
-  name: string;
-  color: string;
-  pos: [number, number, number];
-  pivot: [number, number, number];
-  axis: "X" | "Y";
-  sign: number;
-  parent?: string;
+type FaceDef = { id: string; name: string; color: string; pos: [number, number, number]; pivot: [number, number, number]; axis: "X" | "Y"; sign: number; parent?: string };
+
+const getPatterns = (): Record<string, FaceDef[]> => {
+  const b = { id: "bottom", name: "底面", color: "#0ea5e9" };
+  const f = { id: "front", name: "手前", color: "#f43f5e" };
+  const bk = { id: "back", name: "奥面", color: "#10b981" };
+  const l = { id: "left", name: "左面", color: "#eab308" };
+  const r = { id: "right", name: "右面", color: "#a855f7" };
+  const t = { id: "top", name: "天井", color: "#f8fafc" };
+
+  return {
+    p01: [{...b, pos:[0,0,0], pivot:[0,0,0], axis:"X", sign:0}, {...f, pos:[0,-1,0], pivot:[0,-0.5,0], axis:"X", sign:1, parent:"bottom"}, {...bk, pos:[0,1,0], pivot:[0,0.5,0], axis:"X", sign:-1, parent:"bottom"}, {...l, pos:[-1,0,0], pivot:[-0.5,0,0], axis:"Y", sign:-1, parent:"bottom"}, {...r, pos:[1,0,0], pivot:[0.5,0,0], axis:"Y", sign:1, parent:"bottom"}, {...t, pos:[0,2,0], pivot:[0,1.5,0], axis:"X", sign:-1, parent:"back"}],
+    p02: [{...b, pos:[0,0,0], pivot:[0,0,0], axis:"X", sign:0}, {...f, pos:[0,-1,0], pivot:[0,-0.5,0], axis:"X", sign:1, parent:"bottom"}, {...bk, pos:[0,1,0], pivot:[0,0.5,0], axis:"X", sign:-1, parent:"bottom"}, {...t, pos:[0,2,0], pivot:[0,1.5,0], axis:"X", sign:-1, parent:"back"}, {...r, pos:[1,1,0], pivot:[0.5,1,0], axis:"Y", sign:1, parent:"back"}, {...l, pos:[-1,1,0], pivot:[-0.5,1,0], axis:"Y", sign:-1, parent:"back"}],
+    p03: [{...b, pos:[0,0,0], pivot:[0,0,0], axis:"X", sign:0}, {...f, pos:[0,-1,0], pivot:[0,-0.5,0], axis:"X", sign:1, parent:"bottom"}, {...bk, pos:[0,1,0], pivot:[0,0.5,0], axis:"X", sign:-1, parent:"bottom"}, {...t, pos:[0,2,0], pivot:[0,1.5,0], axis:"X", sign:-1, parent:"back"}, {...r, pos:[1,1,0], pivot:[0.5,1,0], axis:"Y", sign:1, parent:"back"}, {...l, pos:[-1,0,0], pivot:[-0.5,0,0], axis:"Y", sign:-1, parent:"bottom"}],
+    p04: [{...b, pos:[0,0,0], pivot:[0,0,0], axis:"X", sign:0}, {...f, pos:[0,-1,0], pivot:[0,-0.5,0], axis:"X", sign:1, parent:"bottom"}, {...bk, pos:[0,1,0], pivot:[0,0.5,0], axis:"X", sign:-1, parent:"bottom"}, {...l, pos:[-1,0,0], pivot:[-0.5,0,0], axis:"Y", sign:-1, parent:"bottom"}, {...t, pos:[-1,1,0], pivot:[-1,0.5,0], axis:"X", sign:-1, parent:"left"}, {...r, pos:[1,0,0], pivot:[0.5,0,0], axis:"Y", sign:1, parent:"bottom"}],
+    p05: [{...b, pos:[0,0,0], pivot:[0,0,0], axis:"X", sign:0}, {...f, pos:[0,-1,0], pivot:[0,-0.5,0], axis:"X", sign:1, parent:"bottom"}, {...bk, pos:[0,1,0], pivot:[0,0.5,0], axis:"X", sign:-1, parent:"bottom"}, {...l, pos:[-1,0,0], pivot:[-0.5,0,0], axis:"Y", sign:-1, parent:"bottom"}, {...r, pos:[1,0,0], pivot:[0.5,0,0], axis:"Y", sign:1, parent:"bottom"}, {...t, pos:[1,1,0], pivot:[1,0.5,0], axis:"X", sign:-1, parent:"right"}],
+    p06: [{...b, pos:[0,0,0], pivot:[0,0,0], axis:"X", sign:0}, {...f, pos:[0,-1,0], pivot:[0,-0.5,0], axis:"X", sign:1, parent:"bottom"}, {...bk, pos:[0,1,0], pivot:[0,0.5,0], axis:"X", sign:-1, parent:"bottom"}, {...l, pos:[-1,1,0], pivot:[-0.5,1,0], axis:"Y", sign:-1, parent:"back"}, {...r, pos:[1,1,0], pivot:[0.5,1,0], axis:"Y", sign:1, parent:"back"}, {...t, pos:[0,2,0], pivot:[0,1.5,0], axis:"X", sign:-1, parent:"back"}],
+    p07: [{...b, pos:[0,0,0], pivot:[0,0,0], axis:"X", sign:0}, {...f, pos:[0,-1,0], pivot:[0,-0.5,0], axis:"X", sign:1, parent:"bottom"}, {...bk, pos:[0,1,0], pivot:[0,0.5,0], axis:"X", sign:-1, parent:"bottom"}, {...l, pos:[-1,1,0], pivot:[-0.5,1,0], axis:"Y", sign:-1, parent:"back"}, {...t, pos:[0,2,0], pivot:[0,1.5,0], axis:"X", sign:-1, parent:"back"}, {...r, pos:[0,1,0], pivot:[0.5,1,0], axis:"Y", sign:1, parent:"back"}],
+    p08: [{...b, pos:[0,0,0], pivot:[0,0,0], axis:"X", sign:0}, {...f, pos:[0,-1,0], pivot:[0,-0.5,0], axis:"X", sign:1, parent:"bottom"}, {...l, pos:[-1,-1,0], pivot:[-0.5,-1,0], axis:"Y", sign:-1, parent:"front"}, {...bk, pos:[0,1,0], pivot:[0,0.5,0], axis:"X", sign:-1, parent:"bottom"}, {...r, pos:[1,1,0], pivot:[0.5,1,0], axis:"Y", sign:1, parent:"back"}, {...t, pos:[0,2,0], pivot:[0,1.5,0], axis:"X", sign:-1, parent:"back"}],
+    p09: [{...b, pos:[0,0,0], pivot:[0,0,0], axis:"X", sign:0}, {...f, pos:[0,-1,0], pivot:[0,-0.5,0], axis:"X", sign:1, parent:"bottom"}, {...l, pos:[-1,-1,0], pivot:[-0.5,-1,0], axis:"Y", sign:-1, parent:"front"}, {...r, pos:[1,-1,0], pivot:[0.5,-1,0], axis:"Y", sign:1, parent:"front"}, {...bk, pos:[0,1,0], pivot:[0,0.5,0], axis:"X", sign:-1, parent:"bottom"}, {...t, pos:[0,2,0], pivot:[0,1.5,0], axis:"X", sign:-1, parent:"back"}],
+    p10: [{...b, pos:[0,0,0], pivot:[0,0,0], axis:"X", sign:0}, {...f, pos:[0,-1,0], pivot:[0,-0.5,0], axis:"X", sign:1, parent:"bottom"}, {...l, pos:[-1,-1,0], pivot:[-0.5,-1,0], axis:"Y", sign:-1, parent:"front"}, {...r, pos:[1,0,0], pivot:[0.5,0,0], axis:"Y", sign:1, parent:"bottom"}, {...bk, pos:[1,1,0], pivot:[1,0.5,0], axis:"X", sign:-1, parent:"right"}, {...t, pos:[1,2,0], pivot:[1,1.5,0], axis:"X", sign:-1, parent:"back"}],
+    p11: [{...b, pos:[0,0,0], pivot:[0,0,0], axis:"X", sign:0}, {...f, pos:[0,-1,0], pivot:[0,-0.5,0], axis:"X", sign:1, parent:"bottom"}, {...l, pos:[-1,-1,0], pivot:[-0.5,-1,0], axis:"Y", sign:-1, parent:"front"}, {...r, pos:[1,0,0], pivot:[0.5,0,0], axis:"Y", sign:1, parent:"bottom"}, {...bk, pos:[1,1,0], pivot:[1,0.5,0], axis:"X", sign:-1, parent:"right"}, {...t, pos:[0,1,0], pivot:[0,0.5,0], axis:"Y", sign:1, parent:"right"}],
+  };
 };
 
-// --- パターンデータ ---
-const getPatterns = (): Record<string, FaceDef[]> => ({
-  p01: [
-    { id: "bottom", name: "底面", color: "#0ea5e9", pos: [0, 0, 0], pivot: [0, 0, 0], axis: "X", sign: 0 },
-    { id: "front", name: "手前", color: "#f43f5e", pos: [0, -1, 0], pivot: [0, -0.5, 0], axis: "X", sign: 1, parent: "bottom" },
-    { id: "back", name: "奥面", color: "#10b981", pos: [0, 1, 0], pivot: [0, 0.5, 0], axis: "X", sign: -1, parent: "bottom" },
-    { id: "left", name: "左面", color: "#eab308", pos: [-1, 0, 0], pivot: [-0.5, 0, 0], axis: "Y", sign: -1, parent: "bottom" },
-    { id: "right", name: "右面", color: "#a855f7", pos: [1, 0, 0], pivot: [0.5, 0, 0], axis: "Y", sign: 1, parent: "bottom" },
-    { id: "top", name: "天井", color: "#f8fafc", pos: [0, 2, 0], pivot: [0, 1.5, 0], axis: "X", sign: -1, parent: "back" }
-  ],
-  p02: [
-    { id: "bottom", name: "底面", color: "#0ea5e9", pos: [0, 0, 0], pivot: [0, 0, 0], axis: "X", sign: 0 },
-    { id: "front", name: "手前", color: "#f43f5e", pos: [0, -1, 0], pivot: [0, -0.5, 0], axis: "X", sign: 1, parent: "bottom" },
-    { id: "back", name: "奥面", color: "#10b981", pos: [0, 1, 0], pivot: [0, 0.5, 0], axis: "X", sign: -1, parent: "bottom" },
-    { id: "top", name: "天井", color: "#f8fafc", pos: [0, 2, 0], pivot: [0, 1.5, 0], axis: "X", sign: -1, parent: "back" },
-    { id: "right", name: "右面", color: "#a855f7", pos: [1, 1, 0], pivot: [0.5, 1, 0], axis: "Y", sign: 1, parent: "back" },
-    { id: "left", name: "左面", color: "#eab308", pos: [-1, 0, 0], pivot: [-0.5, 0, 0], axis: "Y", sign: -1, parent: "bottom" }
-  ]
-});
-
-// --- 面コンポーネント ---
 function FaceInstance({ def, progress, allFaces }: { def: FaceDef; progress: number; allFaces: FaceDef[] }) {
   const groupRef = useRef<THREE.Group>(null);
   useEffect(() => {
@@ -64,15 +56,9 @@ function FaceInstance({ def, progress, allFaces }: { def: FaceDef; progress: num
     groupRef.current.matrix.copy(getMatrix(def));
     groupRef.current.matrixAutoUpdate = false;
   }, [progress, def, allFaces]);
-
-  return (
-    <group ref={groupRef}>
-      <mesh><planeGeometry args={[0.9, 0.9]} /><meshStandardMaterial color={def.color} side={THREE.DoubleSide} /></mesh>
-    </group>
-  );
+  return <group ref={groupRef}><mesh><planeGeometry args={[0.9, 0.9]} /><meshStandardMaterial color={def.color} side={THREE.DoubleSide} /></mesh></group>;
 }
 
-// --- メイン ---
 export default function CubeQuest() {
   const [key, setKey] = useState("p01");
   const [progress, setProgress] = useState(0);
@@ -86,21 +72,14 @@ export default function CubeQuest() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // スタイル補助関数
-  const getButtonStyle = (active: boolean): React.CSSProperties => ({
-    padding: "8px 12px", background: active ? "#22d3ee" : "#1e293b",
-    border: "none", borderRadius: "6px", color: "white", cursor: "pointer",
-    fontSize: "14px", flex: "1 1 calc(50% - 8px)"
-  });
-
   return (
     <div style={{ width: "100%", height: "100vh", display: "flex", flexDirection: isMobile ? "column" : "row", background: "#020617", color: "white", fontFamily: "sans-serif", overflow: "hidden" }}>
-      <div style={{ width: isMobile ? "100%" : "300px", flex: isMobile ? "none" : "0 0 300px", padding: "16px", background: "#0f172a", borderBottom: isMobile ? "1px solid #334" : "none", borderRight: isMobile ? "none" : "1px solid #334", overflowY: "auto", boxSizing: "border-box" }}>
-        <h2 style={{ fontSize: "18px", margin: "0 0 16px 0" }}>展開図実験室</h2>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+      <div style={{ width: isMobile ? "100%" : "300px", flex: isMobile ? "none" : "0 0 300px", padding: "16px", background: "#0f172a", boxSizing: "border-box", borderBottom: isMobile ? "1px solid #334" : "none", borderRight: isMobile ? "none" : "1px solid #334", overflowY: "auto" }}>
+        <h2 style={{ fontSize: "18px", margin: "0 0 16px 0" }}>全11展開図</h2>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
           {Object.keys(patterns).map(k => (
-            <button key={k} onClick={() => {setKey(k); setProgress(0);}} style={getButtonStyle(key === k)}>
-              {k === "p01" ? "十字型" : "階段型"}
+            <button key={k} onClick={() => {setKey(k); setProgress(0);}} style={{ padding: "8px", background: key === k ? "#22d3ee" : "#1e293b", border: "none", borderRadius: "6px", color: "white", cursor: "pointer", fontSize: "12px" }}>
+              {k}
             </button>
           ))}
         </div>
