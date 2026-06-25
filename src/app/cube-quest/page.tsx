@@ -12,6 +12,7 @@ type FaceConfig = { text: string; rotation: number };
 // --- 定数 ---
 const COLORS = { b: "#0ea5e9", f: "#f43f5e", bk: "#10b981", l: "#eab308", r: "#a855f7", t: "#f8fafc" };
 
+// --- パターンデータ ---
 const getPatterns = (): Record<string, FaceDef[]> => ({
   "1-4-1-a (十字)": [
     { id: "b", color: COLORS.b, pos: [0, 0, 0], pivot: [0, 0, 0], axis: "X", sign: 0 },
@@ -103,12 +104,12 @@ const getPatterns = (): Record<string, FaceDef[]> => ({
   ]
 });
 
+// --- コンポーネント ---
 function FaceInstance({ def, progress, allFaces, config, isSelected }: { def: FaceDef; progress: number; allFaces: FaceDef[]; config: FaceConfig; isSelected: boolean }) {
   const groupRef = useRef<THREE.Group>(null);
   
   useEffect(() => {
     if (!groupRef.current) return;
-    // ... (行列計算処理はそのまま)
     const getMatrix = (target: FaceDef): THREE.Matrix4 => {
       const m = new THREE.Matrix4();
       if (target.parent) m.multiply(getMatrix(allFaces.find(f => f.id === target.parent)!));
@@ -130,15 +131,12 @@ function FaceInstance({ def, progress, allFaces, config, isSelected }: { def: Fa
       <mesh position={def.pos}>
         <planeGeometry args={[0.9, 0.9]} />
         <meshStandardMaterial color={def.color} side={THREE.DoubleSide} />
-        
-        {/* 選択中の場合、黄色い枠線を表示するエフェクト */}
         {isSelected && (
           <lineSegments>
             <edgesGeometry args={[new THREE.PlaneGeometry(0.9, 0.9)]} />
-            <lineBasicMaterial color="yellow" linewidth={5} />
+            <lineBasicMaterial color="yellow" />
           </lineSegments>
         )}
-        
         <Html position={[0, 0, 0.05]} transform occlude distanceFactor={2} center>
           <div style={{ width: "90px", height: "90px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "60px", fontWeight: "bold", color: "white", transform: `rotate(${config.rotation}deg)`, userSelect: "none" }}>
             {config.text}
@@ -149,27 +147,68 @@ function FaceInstance({ def, progress, allFaces, config, isSelected }: { def: Fa
   );
 }
 
-// ... (CubeQuestPage内の修正)
+export default function CubeQuestPage() {
+  const [key, setKey] = useState("1-4-1-a (十字)");
+  const [progress, setProgress] = useState(0);
+  const [isEditMode, setIsEditMode] = useState(true);
+  const [faceConfigs, setFaceConfigs] = useState<Record<string, FaceConfig>>({});
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  
+  const patterns = useMemo(getPatterns, []);
+  const currentFaces = patterns[key];
 
-{selectedId && (
-  <div style={{ marginTop: "16px", borderTop: "1px solid #64748b", paddingTop: "16px" }}>
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
-      <p style={{ margin: 0 }}>選択中: <strong>面 {selectedId}</strong></p>
-      {/* 編集完了ボタンを復活させました */}
-      <button onClick={() => setSelectedId(null)} style={{ padding: "8px 16px", background: "#22c55e", border: "none", borderRadius: "6px", color: "white" }}>編集完了</button>
+  return (
+    <div style={{ width: "100%", height: "100dvh", display: "flex", flexDirection: "column", background: "#020617", color: "white", overflow: "hidden" }}>
+      <div style={{ padding: "16px", background: "#0f172a", flexShrink: 0 }}>
+        <select value={key} onChange={(e) => {setKey(e.target.value); setSelectedId(null);}} style={{ width: "100%", padding: "16px", fontSize: "18px", background: "#1e293b", color: "white", borderRadius: "8px", marginBottom: "16px" }}>
+          {Object.keys(patterns).map(k => <option key={k} value={k}>{k}</option>)}
+        </select>
+        
+        {isEditMode && (
+          <div style={{ background: "#334155", padding: "16px", borderRadius: "12px" }}>
+            <h3 style={{ margin: "0 0 10px 0" }}>編集する面を選択</h3>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "8px", marginBottom: "16px" }}>
+              {currentFaces.map((f) => (
+                <button key={f.id} onClick={() => setSelectedId(f.id)} style={{ padding: "10px", background: selectedId === f.id ? "#38bdf8" : "#475569", border: "none", borderRadius: "6px", color: "white", fontWeight: "bold" }}>{f.id}</button>
+              ))}
+            </div>
+            
+            {/* 選択中の面がある場合のみ編集UIを表示 */}
+            {selectedId && (
+              <div style={{ borderTop: "1px solid #64748b", paddingTop: "16px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+                  <p style={{ margin: 0 }}>選択中: <strong>面 {selectedId}</strong></p>
+                  <button onClick={() => setSelectedId(null)} style={{ padding: "8px 16px", background: "#22c55e", border: "none", borderRadius: "6px", color: "white" }}>編集完了</button>
+                </div>
+                <input placeholder="文字を入力..." value={faceConfigs[selectedId]?.text || ""} onChange={(e) => setFaceConfigs(prev => ({...prev, [selectedId]: {...(prev[selectedId] || {text: "", rotation: 0}), text: e.target.value}}))} style={{ width: "100%", padding: "12px", fontSize: "16px", borderRadius: "6px", border: "none", boxSizing: "border-box" }} />
+                <div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
+                  {[0, 90, 180, 270].map(deg => (
+                    <button key={deg} onClick={() => setFaceConfigs(prev => ({...prev, [selectedId]: {...(prev[selectedId] || {text: "", rotation: 0}), rotation: deg}}))} style={{ flex: 1, padding: "12px", borderRadius: "6px", border: "none", background: faceConfigs[selectedId]?.rotation === deg ? "#38bdf8" : "#475569", color: "white" }}>{deg}°</button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+      
+      <div style={{ flex: 1, position: "relative" }}>
+        <Canvas camera={{ position: [0, 4, 8], fov: 50 }}>
+          <ambientLight intensity={0.8} />
+          <group rotation={[-Math.PI / 2, 0, 0]} position={[-1, -1, 0]}>
+            {currentFaces.map(f => (
+              <FaceInstance key={f.id} def={f} progress={isEditMode ? 0 : progress} allFaces={currentFaces} config={faceConfigs[f.id] || { text: "", rotation: 0 }} isSelected={selectedId === f.id} />
+            ))}
+          </group>
+          <OrbitControls makeDefault />
+        </Canvas>
+        <div style={{ position: "absolute", bottom: "30px", width: "90%", left: "5%", zIndex: 20 }}>
+          <button onClick={() => setIsEditMode(!isEditMode)} style={{ width: "100%", padding: "12px", marginBottom: "10px", borderRadius: "8px", border: "none", background: isEditMode ? "#22c55e" : "#38bdf8", fontSize: "18px", fontWeight: "bold" }}>
+            {isEditMode ? "組み立てモードへ" : "編集モードへ戻る"}
+          </button>
+          {!isEditMode && <input type="range" min="0" max="100" value={progress} onChange={(e) => setProgress(Number(e.target.value))} style={{ width: "100%", height: "40px" }} />}
+        </div>
+      </div>
     </div>
-    
-    <input 
-      placeholder="文字を入力..." 
-      value={faceConfigs[selectedId]?.text || ""} 
-      onChange={(e) => setFaceConfigs(prev => ({...prev, [selectedId]: {...(prev[selectedId] || {text: "", rotation: 0}), text: e.target.value}}))} 
-      style={{ width: "100%", padding: "12px", fontSize: "16px", borderRadius: "6px", border: "none", boxSizing: "border-box" }} 
-    />
-    
-    <div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
-      {[0, 90, 180, 270].map(deg => (
-        <button key={deg} onClick={() => setFaceConfigs(prev => ({...prev, [selectedId]: {...(prev[selectedId] || {text: "", rotation: 0}), rotation: deg}}))} style={{ flex: 1, padding: "12px", borderRadius: "6px", border: "none", background: faceConfigs[selectedId]?.rotation === deg ? "#38bdf8" : "#475569", color: "white" }}>{deg}°</button>
-      ))}
-    </div>
-  </div>
-)}
+  );
+}
