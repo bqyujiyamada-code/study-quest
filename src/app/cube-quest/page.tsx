@@ -8,7 +8,14 @@ import * as THREE from "three";
 type FaceDef = { id: string; color: string; pos: [number, number, number]; pivot: [number, number, number]; axis: "X" | "Y"; sign: number; parent?: string };
 type FaceConfig = { text: string; rotation: number };
 
-const COLORS = { b: "#0ea5e9", f: "#f43f5e", bk: "#10b981", l: "#eab308", r: "#a855f7", t: "#f8fafc" };
+const COLORS = { 
+  b: "#0ea5e9", // Blue
+  f: "#f43f5e", // Red
+  bk: "#10b981", // Green
+  l: "#eab308", // Yellow
+  r: "#a855f7", // Purple
+  t: "#f8fafc"  // White
+};
 
 const getPatterns = (): Record<string, FaceDef[]> => ({
   "1-4-1-a (十字)": [
@@ -61,11 +68,11 @@ const getPatterns = (): Record<string, FaceDef[]> => ({
   ],
   "1-3-2-a (1が上)": [
     { id: "c1", color: COLORS.f, pos: [0, 0, 0], pivot: [0, 0, 0], axis: "X", sign: 0 },
-    { id: "c2", color: COLORS.t, pos: [0, 1, 0], pivot: [0, 0.5, 0], axis: "X", sign: -1, parent: "c1" }, // c1-c2の辺
-    { id: "c3", color: COLORS.b, pos: [0, -1, 0], pivot: [0, -0.5, 0], axis: "X", sign: 1, parent: "c1" }, // c1-c3の辺
+    { id: "c2", color: COLORS.t, pos: [0, 1, 0], pivot: [0, 0.5, 0], axis: "X", sign: -1, parent: "c1" },
+    { id: "c3", color: COLORS.b, pos: [0, -1, 0], pivot: [0, -0.5, 0], axis: "X", sign: 1, parent: "c1" },
     { id: "left", color: COLORS.l, pos: [-1, 1, 0], pivot: [-0.5, 1, 0], axis: "Y", sign: -1, parent: "c2" },
     { id: "r1", color: COLORS.r, pos: [1, 1, 0], pivot: [0.5, 1, 0], axis: "Y", sign: 1, parent: "c2" },
-    { id: "r2", color: COLORS.bk, pos: [1, 2, 0], pivot: [1, 1.5, 0], axis: "X", sign: -1, parent: "r1" } // r1-r2の辺
+    { id: "r2", color: COLORS.bk, pos: [1, 2, 0], pivot: [1, 1.5, 0], axis: "X", sign: -1, parent: "r1" }
   ],
   "1-3-2-b (1が中)": [
     { id: "c1", color: COLORS.f, pos: [0, 0, 0], pivot: [0, 0, 0], axis: "X", sign: 0 },
@@ -92,7 +99,7 @@ const getPatterns = (): Record<string, FaceDef[]> => ({
     { id: "t", color: COLORS.t, pos: [3, 2, 0], pivot: [2.5, 2, 0], axis: "Y", sign: 1, parent: "l" }
   ],
   "3-3型": [
-{ id: "c1", color: COLORS.f, pos: [0, 0, 0], pivot: [0, 0, 0], axis: "X", sign: 0 },
+    { id: "c1", color: COLORS.f, pos: [0, 0, 0], pivot: [0, 0, 0], axis: "X", sign: 0 },
     { id: "c2", color: COLORS.t, pos: [0, 1, 0], pivot: [0, 0.5, 0], axis: "X", sign: -1, parent: "c1" },
     { id: "c3", color: COLORS.b, pos: [0, 2, 0], pivot: [0, 1.5, 0], axis: "X", sign: -1, parent: "c2" },
     { id: "r1", color: COLORS.bk, pos: [1, 0, 0], pivot: [0.5, 0, 0], axis: "Y", sign: 1, parent: "c1" },
@@ -101,7 +108,6 @@ const getPatterns = (): Record<string, FaceDef[]> => ({
   ]
 });
 
-// 【修正箇所】引数の型定義に config と onClick を追加
 function FaceInstance({ 
   def, progress, allFaces, config, onClick 
 }: { 
@@ -132,13 +138,8 @@ function FaceInstance({
       <mesh position={def.pos} onClick={(e) => { e.stopPropagation(); onClick(); }}>
         <planeGeometry args={[0.9, 0.9]} />
         <meshStandardMaterial color={def.color} side={THREE.DoubleSide} />
-        {/* 文字の表示 */}
         <Html position={[0, 0, 0.05]} transform occlude distanceFactor={2}>
-          <div style={{ 
-            fontSize: "100px", fontWeight: "bold", color: "white", 
-            transform: `rotate(${config.rotation}deg)`,
-            userSelect: "none"
-          }}>
+          <div style={{ fontSize: "100px", fontWeight: "bold", color: "white", transform: `rotate(${config.rotation}deg)`, userSelect: "none" }}>
             {config.text}
           </div>
         </Html>
@@ -157,21 +158,24 @@ export default function CubeQuestPage() {
   const currentFaces = patterns[key];
 
   return (
-    <div style={{ width: "100%", height: "100vh", display: "flex", flexDirection: "column", background: "#020617", color: "white", fontFamily: "sans-serif" }}>
-      <div style={{ padding: "16px", background: "#0f172a", zIndex: 10 }}>
+    <div style={{ width: "100%", height: "100dvh", display: "flex", flexDirection: "column", background: "#020617", color: "white" }}>
+      {/* 操作パネル：フォントサイズと余白を改善 */}
+      <div style={{ padding: "20px", background: "#0f172a" }}>
         <select value={key} onChange={(e) => {setKey(e.target.value); setProgress(0); setSelectedId(null);}} 
-          style={{ width: "100%", padding: "12px", background: "#1e293b", color: "white", marginBottom: "10px" }}>
+          style={{ width: "100%", padding: "16px", fontSize: "1.2rem", background: "#1e293b", color: "white", borderRadius: "8px" }}>
           {Object.keys(patterns).map(k => <option key={k} value={k}>{k}</option>)}
         </select>
         
         {selectedId && (
-          <div style={{ background: "#1e293b", padding: "10px", borderRadius: "8px" }}>
-            <input placeholder="文字入力" value={faceConfigs[selectedId]?.text || ""} onChange={(e) => setFaceConfigs(prev => ({...prev, [selectedId]: {...(prev[selectedId] || {text: "", rotation: 0}), text: e.target.value}}))} />
-            <input type="range" min="0" max="360" value={faceConfigs[selectedId]?.rotation || 0} onChange={(e) => setFaceConfigs(prev => ({...prev, [selectedId]: {...(prev[selectedId] || {text: "", rotation: 0}), rotation: Number(e.target.value)}}))} />
+          <div style={{ background: "#1e293b", padding: "15px", borderRadius: "8px", marginTop: "15px" }}>
+            <input placeholder="文字を入力" value={faceConfigs[selectedId]?.text || ""} onChange={(e) => setFaceConfigs(prev => ({...prev, [selectedId]: {...(prev[selectedId] || {text: "", rotation: 0}), text: e.target.value}}))} style={{ width: "100%", padding: "10px", fontSize: "1rem", marginBottom: "10px" }} />
+            <div style={{ fontSize: "0.9rem" }}>回転: {faceConfigs[selectedId]?.rotation || 0}°</div>
+            <input type="range" min="0" max="360" value={faceConfigs[selectedId]?.rotation || 0} onChange={(e) => setFaceConfigs(prev => ({...prev, [selectedId]: {...(prev[selectedId] || {text: "", rotation: 0}), rotation: Number(e.target.value)}}))} style={{ width: "100%" }} />
           </div>
         )}
       </div>
       
+      {/* 3D表示エリア：高さを確保しスライダーとの干渉を防止 */}
       <div style={{ flex: 1, position: "relative" }}>
         <Canvas camera={{ position: [0, 4, 8], fov: 50 }}>
           <ambientLight intensity={0.8} />
@@ -185,8 +189,10 @@ export default function CubeQuestPage() {
           </group>
           <OrbitControls />
         </Canvas>
-        <div style={{ position: "absolute", bottom: "20px", width: "100%", padding: "0 20px" }}>
-          <input type="range" min="0" max="100" value={progress} onChange={(e) => setProgress(Number(e.target.value))} style={{ width: "100%" }} />
+        
+        {/* スライダー：左右に余白を設け、アドレスバーから離すために bottom を調整 */}
+        <div style={{ position: "absolute", bottom: "40px", width: "90%", left: "5%" }}>
+          <input type="range" min="0" max="100" value={progress} onChange={(e) => setProgress(Number(e.target.value))} style={{ width: "100%", height: "40px" }} />
         </div>
       </div>
     </div>
