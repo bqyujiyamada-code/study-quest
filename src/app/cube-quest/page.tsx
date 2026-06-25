@@ -157,27 +157,37 @@ export default function CubeQuestPage() {
   const patterns = useMemo(getPatterns, []);
   const currentFaces = patterns[key];
 
+// ... (前略)
+
   return (
     <div style={{ width: "100%", height: "100dvh", display: "flex", flexDirection: "column", background: "#020617", color: "white" }}>
-      {/* 操作パネル：フォントサイズと余白を改善 */}
-      <div style={{ padding: "20px", background: "#0f172a" }}>
+      
+      {/* 上部：コントロールエリア（常に表示） */}
+      <div style={{ padding: "20px", background: "#0f172a", zIndex: 10 }}>
         <select value={key} onChange={(e) => {setKey(e.target.value); setProgress(0); setSelectedId(null);}} 
-          style={{ width: "100%", padding: "16px", fontSize: "1.2rem", background: "#1e293b", color: "white", borderRadius: "8px" }}>
+          style={{ width: "100%", padding: "16px", fontSize: "1.2rem", background: "#1e293b", color: "white", borderRadius: "8px", marginBottom: "10px" }}>
           {Object.keys(patterns).map(k => <option key={k} value={k}>{k}</option>)}
         </select>
-        
-        {selectedId && (
-          <div style={{ background: "#1e293b", padding: "15px", borderRadius: "8px", marginTop: "15px" }}>
-            <input placeholder="文字を入力" value={faceConfigs[selectedId]?.text || ""} onChange={(e) => setFaceConfigs(prev => ({...prev, [selectedId]: {...(prev[selectedId] || {text: "", rotation: 0}), text: e.target.value}}))} style={{ width: "100%", padding: "10px", fontSize: "1rem", marginBottom: "10px" }} />
-            <div style={{ fontSize: "0.9rem" }}>回転: {faceConfigs[selectedId]?.rotation || 0}°</div>
+
+        {/* 面選択時のみパネル表示（ここで文字と回転を編集） */}
+        {selectedId ? (
+          <div style={{ background: "#334155", padding: "15px", borderRadius: "8px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "10px" }}>
+              <span>面: {selectedId} 編集</span>
+              <button onClick={() => setSelectedId(null)} style={{ background: "#ef4444", border: "none", color: "white", padding: "5px 10px", borderRadius: "4px" }}>閉じる</button>
+            </div>
+            <input placeholder="文字入力" value={faceConfigs[selectedId]?.text || ""} onChange={(e) => setFaceConfigs(prev => ({...prev, [selectedId]: {...(prev[selectedId] || {text: "", rotation: 0}), text: e.target.value}}))} style={{ width: "100%", padding: "10px", marginBottom: "10px" }} />
             <input type="range" min="0" max="360" value={faceConfigs[selectedId]?.rotation || 0} onChange={(e) => setFaceConfigs(prev => ({...prev, [selectedId]: {...(prev[selectedId] || {text: "", rotation: 0}), rotation: Number(e.target.value)}}))} style={{ width: "100%" }} />
           </div>
+        ) : (
+          <div style={{ color: "#94a3b8", fontSize: "0.9rem" }}>※面をタップして文字を編集できます</div>
         )}
       </div>
       
-      {/* 3D表示エリア：高さを確保しスライダーとの干渉を防止 */}
+      {/* 中部：3D表示エリア（スライダーの邪魔をしない） */}
       <div style={{ flex: 1, position: "relative" }}>
         <Canvas camera={{ position: [0, 4, 8], fov: 50 }}>
+          {/* ... (Canvas内は変更なし) */}
           <ambientLight intensity={0.8} />
           <group rotation={[-Math.PI / 2, 0, 0]} position={[-1, -1, 0]}>
             {currentFaces.map(f => (
@@ -190,11 +200,11 @@ export default function CubeQuestPage() {
           <OrbitControls />
         </Canvas>
         
-        {/* スライダー：左右に余白を設け、アドレスバーから離すために bottom を調整 */}
-        <div style={{ position: "absolute", bottom: "40px", width: "90%", left: "5%" }}>
+        {/* 下部：組み立て用スライダー（常に一番手前に配置） */}
+        <div style={{ position: "absolute", bottom: "40px", width: "90%", left: "5%", zIndex: 20 }}>
+          <label style={{ display: "block", marginBottom: "10px", textAlign: "center" }}>組み立て進捗</label>
           <input type="range" min="0" max="100" value={progress} onChange={(e) => setProgress(Number(e.target.value))} style={{ width: "100%", height: "40px" }} />
         </div>
       </div>
     </div>
   );
-}
