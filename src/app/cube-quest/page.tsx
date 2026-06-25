@@ -5,7 +5,6 @@ import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Html } from "@react-three/drei";
 import * as THREE from "three";
 
-// 型定義をファイルのトップレベルで定義
 type FaceDef = { id: string; color: string; pos: [number, number, number]; pivot: [number, number, number]; axis: "X" | "Y"; sign: number; parent?: string };
 type FaceConfig = { text: string; rotation: number };
 
@@ -103,9 +102,9 @@ const getPatterns = (): Record<string, FaceDef[]> => ({
 });
 
 function FaceInstance({ 
-  def, progress, allFaces, config, onClick, isSelected 
+  def, progress, allFaces, config, onClick, isSelected, isEditMode 
 }: { 
-  def: FaceDef; progress: number; allFaces: FaceDef[]; config: FaceConfig; onClick: () => void; isSelected: boolean 
+  def: FaceDef; progress: number; allFaces: FaceDef[]; config: FaceConfig; onClick: () => void; isSelected: boolean; isEditMode: boolean 
 }) {
   const groupRef = useRef<THREE.Group>(null);
   
@@ -127,31 +126,21 @@ function FaceInstance({
     groupRef.current.matrixAutoUpdate = false;
   }, [progress, def, allFaces]);
 
-return (
+  return (
     <group ref={groupRef}>
-      <mesh position={def.pos} onClick={(e) => { e.stopPropagation(); onClick(); }}>
+      <mesh 
+        position={def.pos} 
+        onClick={(e) => { 
+          if (isEditMode) { e.stopPropagation(); onClick(); } 
+        }}
+      >
         <planeGeometry args={[0.9, 0.9]} />
         <meshStandardMaterial color={isSelected ? "#ffffff" : def.color} side={THREE.DoubleSide} />
-        
-        {/* Htmlの配置を調整 */}
-        <Html 
-          position={[0, 0, 0.05]} 
-          transform 
-          occlude 
-          distanceFactor={2}
-          center // ★ここが重要：Html要素自体をメッシュの中心に配置する
-        >
+        <Html position={[0, 0, 0.05]} transform occlude distanceFactor={2} center>
           <div style={{ 
-            width: "90px", 
-            height: "90px", 
-            display: "flex", 
-            alignItems: "center", 
-            justifyContent: "center", 
-            fontSize: "60px", 
-            fontWeight: "bold", 
-            color: isSelected ? "black" : "white", 
-            transform: `rotate(${config.rotation}deg)`, // ここで回転
-            userSelect: "none"
+            width: "90px", height: "90px", display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: "60px", fontWeight: "bold", color: isSelected ? "black" : "white", 
+            transform: `rotate(${config.rotation}deg)`, userSelect: "none"
           }}>
             {config.text}
           </div>
@@ -164,47 +153,34 @@ return (
 export default function CubeQuestPage() {
   const [key, setKey] = useState("1-4-1-a (十字)");
   const [progress, setProgress] = useState(0);
+  const [isEditMode, setIsEditMode] = useState(true); // モード切り替え状態
   const [faceConfigs, setFaceConfigs] = useState<Record<string, FaceConfig>>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
   
   const patterns = useMemo(getPatterns, []);
   const currentFaces = patterns[key];
 
+  // モード切替時にプログレスをリセット
+  useEffect(() => { if (isEditMode) setProgress(0); }, [isEditMode]);
+
   return (
     <div style={{ width: "100%", height: "100dvh", display: "flex", flexDirection: "column", background: "#020617", color: "white", overflow: "hidden" }}>
       <div style={{ padding: "16px", background: "#0f172a", boxSizing: "border-box" }}>
-        <select value={key} onChange={(e) => {setKey(e.target.value); setProgress(0); setSelectedId(null);}} 
-          style={{ width: "100%", padding: "16px", fontSize: "18px", background: "#1e293b", color: "white", borderRadius: "8px" }}>
+        <select value={key} onChange={(e) => {setKey(e.target.value); setSelectedId(null);}} 
+          style={{ width: "100%", padding: "16px", fontSize: "18px", background: "#1e293b", color: "white", borderRadius: "8px", marginBottom: "16px" }}>
           {Object.keys(patterns).map(k => <option key={k} value={k}>{k}</option>)}
         </select>
         
-        {selectedId && (
-          <div style={{ background: "#334155", padding: "16px", borderRadius: "12px", marginTop: "16px", boxSizing: "border-box" }}>
+        {isEditMode && selectedId && (
+          <div style={{ background: "#334155", padding: "16px", borderRadius: "12px", boxSizing: "border-box" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
               <h3 style={{ margin: 0 }}>面: {selectedId} を編集</h3>
-              <button onClick={() => setSelectedId(null)} style={{ padding: "8px 16px", background: "#ef4444", borderRadius: "6px", color: "white", border: "none", fontSize: "16px" }}>閉じる</button>
+              <button onClick={() => setSelectedId(null)} style={{ padding: "8px 16px", background: "#ef4444", borderRadius: "6px", color: "white", border: "none", fontSize: "16px" }}>完了</button>
             </div>
-            
-            <input 
-              placeholder="文字を入力..." 
-              value={faceConfigs[selectedId]?.text || ""} 
-              onChange={(e) => setFaceConfigs(prev => ({...prev, [selectedId]: {...(prev[selectedId] || {text: "", rotation: 0}), text: e.target.value}}))} 
-              style={{ width: "100%", padding: "12px", fontSize: "16px", boxSizing: "border-box", borderRadius: "6px", border: "none" }} 
-            />
-
+            <input placeholder="文字を入力..." value={faceConfigs[selectedId]?.text || ""} onChange={(e) => setFaceConfigs(prev => ({...prev, [selectedId]: {...(prev[selectedId] || {text: "", rotation: 0}), text: e.target.value}}))} style={{ width: "100%", padding: "12px", fontSize: "16px", boxSizing: "border-box", borderRadius: "6px", border: "none" }} />
             <div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
               {[0, 90, 180, 270].map(deg => (
-                <button 
-                  key={deg} 
-                  onClick={() => setFaceConfigs(prev => ({...prev, [selectedId]: {...(prev[selectedId] || {text: "", rotation: 0}), rotation: deg}}))} 
-                  style={{ 
-                    flex: 1, padding: "12px", borderRadius: "6px", border: "none", 
-                    background: faceConfigs[selectedId]?.rotation === deg ? "#38bdf8" : "#475569",
-                    color: "white", fontSize: "16px"
-                  }}
-                >
-                  {deg}°
-                </button>
+                <button key={deg} onClick={() => setFaceConfigs(prev => ({...prev, [selectedId]: {...(prev[selectedId] || {text: "", rotation: 0}), rotation: deg}}))} style={{ flex: 1, padding: "12px", borderRadius: "6px", border: "none", background: faceConfigs[selectedId]?.rotation === deg ? "#38bdf8" : "#475569", color: "white", fontSize: "16px" }}>{deg}°</button>
               ))}
             </div>
           </div>
@@ -216,9 +192,10 @@ export default function CubeQuestPage() {
           <ambientLight intensity={0.8} />
           <group rotation={[-Math.PI / 2, 0, 0]} position={[-1, -1, 0]}>
             {currentFaces.map(f => (
-              <FaceInstance key={f.id} def={f} progress={progress} allFaces={currentFaces} 
+              <FaceInstance key={f.id} def={f} progress={isEditMode ? 0 : progress} allFaces={currentFaces} 
                 config={faceConfigs[f.id] || { text: "", rotation: 0 }} 
                 isSelected={selectedId === f.id}
+                isEditMode={isEditMode}
                 onClick={() => setSelectedId(f.id)} 
               />
             ))}
@@ -227,7 +204,12 @@ export default function CubeQuestPage() {
         </Canvas>
         
         <div style={{ position: "absolute", bottom: "30px", width: "90%", left: "5%", zIndex: 20 }}>
-          <input type="range" min="0" max="100" value={progress} onChange={(e) => setProgress(Number(e.target.value))} style={{ width: "100%", height: "40px" }} />
+          <button onClick={() => setIsEditMode(!isEditMode)} style={{ width: "100%", padding: "12px", marginBottom: "10px", borderRadius: "8px", border: "none", background: isEditMode ? "#38bdf8" : "#22c55e", fontSize: "18px", fontWeight: "bold" }}>
+            {isEditMode ? "組み立てモードへ" : "編集モードへ戻る"}
+          </button>
+          {!isEditMode && (
+            <input type="range" min="0" max="100" value={progress} onChange={(e) => setProgress(Number(e.target.value))} style={{ width: "100%", height: "40px" }} />
+          )}
         </div>
       </div>
     </div>
