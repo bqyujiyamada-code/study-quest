@@ -207,15 +207,28 @@ export default function CubeQuestPage() {
         )}
       </div>
       <div style={{ flex: 1, position: "relative" }}>
-        <Canvas camera={{ position: [0, 4, 8], fov: 50 }}>
-          <ambientLight intensity={0.8} />
-          <group rotation={[-Math.PI / 2, 0, 0]} position={[-1, -1, 0]}>
-            {currentFaces.map(f => (
-              <FaceInstance key={f.id} def={f} progress={isEditMode ? 0 : progress} allFaces={currentFaces} config={faceConfigs[f.id] || { text: "", rotation: 0 }} isSelected={selectedId === f.id} />
-            ))}
-          </group>
-          <OrbitControls makeDefault />
-        </Canvas>
+<Canvas camera={{ position: [0, 4, 8], fov: 50 }}>
+  <ambientLight intensity={0.8} />
+  
+  {/* ここで画面中央に固定する */}
+  <group position={[0, 0, 0]}>
+    <group rotation={[-Math.PI / 2, 0, 0]}>
+      {currentFaces.map(f => (
+        <FaceInstance 
+          key={f.id} 
+          def={f} 
+          progress={isEditMode ? 0 : progress} 
+          allFaces={currentFaces} 
+          config={faceConfigs[f.id] || { text: "", rotation: 0 }} 
+          isSelected={selectedId === f.id} 
+        />
+      ))}
+    </group>
+  </group>
+  
+  {/* 視点の中心を明確にする */}
+  <OrbitControls makeDefault target={[0, 0, 0]} />
+</Canvas>
         <div style={{ position: "absolute", bottom: "30px", width: "90%", left: "5%", zIndex: 20 }}>
           <button onClick={() => setIsEditMode(!isEditMode)} style={{ width: "100%", padding: "12px", marginBottom: "10px", borderRadius: "8px", border: "none", background: isEditMode ? "#22c55e" : "#38bdf8", fontSize: "18px", fontWeight: "bold" }}>
             {isEditMode ? "組み立てモードへ" : "編集モードへ戻る"}
