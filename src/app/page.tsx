@@ -1,33 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, type CSSProperties } from "react";
 import { saveStudyLog, getUserStats, saveStudyLogAndStats } from "@/app/actions/study";
+import { getLevelInfo, getRate } from "@/lib/levels";
+import { STUDY_SUBJECTS } from "@/lib/subjects";
+import { STUDY_USER_ID } from "@/lib/user";
 import Link from "next/link";
 
 type Mode = "SELECT" | "TIMER" | "CONFIRM" | "RESULT";
-
-const SUBJECTS = [
-  { name: "算数", icon: "📐", color: "#4CC9F0", shadow: "#3A86FF" },
-  { name: "国語", icon: "📖", color: "#FF4D6D", shadow: "#C9184A" },
-  { name: "理科", icon: "🧪", color: "#72EFDD", shadow: "#208B81" },
-  { name: "社会", icon: "🗺️", color: "#FFB703", shadow: "#FB8500" },
-  { name: "英語", icon: "🔤", color: "#9B5DE5", shadow: "#5A189A" }, // 英語を追加！
-  { name: "論理", icon: "🧩", color: "#B5179E", shadow: "#7209B7" },
-  { name: "作文", icon: "✍️", color: "#FF85A1", shadow: "#FF477E" },
-];
-
-const RANK_MASTER = [
-  { lv: 1,  h: 0,   name: "見習い探検家" },
-  { lv: 2,  h: 10,  name: "基礎固めの門下生" },
-  { lv: 3,  h: 30,  name: "論理の初段" },
-  { lv: 4,  h: 60,  name: "適性検査の挑戦者" },
-  { lv: 5,  h: 100, name: "集中力の達人" },
-  { lv: 6,  h: 150, name: "開成チャレンジャー" },
-  { lv: 7,  h: 210, name: "思考の魔術師" },
-  { lv: 8,  h: 280, name: "記述の鉄人" },
-  { lv: 9,  h: 360, name: "論理の賢者" },
-  { lv: 10, h: 450, name: "絶対合格の守護神" },
-];
+type ButtonColorVars = CSSProperties & { "--btn-color": string; "--btn-shadow": string };
 
 export default function Home() {
   const [mode, setMode] = useState<Mode>("SELECT");
@@ -43,9 +24,7 @@ export default function Home() {
   const [isInitialized, setIsInitialized] = useState(false);
   const [result, setResult] = useState<{points: number, money: number, leveledUp: boolean, isBonus: boolean, rateUp: boolean} | null>(null);
 
-  const userId = "daughter_01";
-
-  const getRate = (lv: number) => (lv >= 8 ? 0.6 : lv >= 4 ? 0.5 : 0.4);
+  const userId = STUDY_USER_ID;
 
   useEffect(() => {
     async function loadData() {
@@ -66,22 +45,6 @@ export default function Home() {
     }
     loadData();
   }, []);
-
-  const getLevelInfo = (min: number) => {
-    const hours = min / 60;
-    const currentRankIdx = RANK_MASTER.slice().reverse().findIndex(r => hours >= r.h);
-    const currentRank = RANK_MASTER[RANK_MASTER.length - 1 - (currentRankIdx === -1 ? 0 : currentRankIdx)];
-    const nextRank = RANK_MASTER.find(r => r.lv === currentRank.lv + 1);
-    let progress = 100;
-    let remainingText = "MAX LEVEL";
-    if (nextRank) {
-      const currentLvMin = currentRank.h * 60;
-      const nextLvMin = nextRank.h * 60;
-      progress = Math.min(100, ((min - currentLvMin) / (nextLvMin - currentLvMin)) * 100);
-      remainingText = `あと ${nextLvMin - min} 分で Lv.${nextRank.lv}`;
-    }
-    return { ...currentRank, progress, remainingText };
-  };
 
   const levelInfo = getLevelInfo(totalMinutes);
   const currentRate = getRate(levelInfo.lv);
@@ -186,8 +149,8 @@ export default function Home() {
             <div className="fade-in">
               <h1 className="title">今日はなにを冒険する？</h1>
               <div className="subject-grid">
-                {SUBJECTS.map((s) => (
-                  <button key={s.name} className="puni-button" style={{ '--btn-color': s.color, '--btn-shadow': s.shadow } as any}
+                {STUDY_SUBJECTS.map((s) => (
+                  <button key={s.name} className="puni-button" style={{ '--btn-color': s.color, '--btn-shadow': s.shadow } as ButtonColorVars}
                     onClick={() => { 
                       setSubject(s.name); 
                       const now = Date.now(); 

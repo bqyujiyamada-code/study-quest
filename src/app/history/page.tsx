@@ -2,24 +2,16 @@
 
 import { useEffect, useState } from "react";
 import { getAllStudyLogs } from "@/app/actions/study";
+import { STUDY_SUBJECT_ICONS } from "@/lib/subjects";
+import { STUDY_USER_ID } from "@/lib/user";
+import type { StudyLog } from "@/lib/types";
 import Link from "next/link";
 
-// 科目ごとのアイコンを定義（英語を追加）
-const SUBJECT_ICONS: { [key: string]: string } = {
-  "算数": "📐",
-  "国語": "📖",
-  "理科": "🧪",
-  "社会": "🗺️",
-  "英語": "🔤", // 追加！
-  "論理": "🧩",
-  "作文": "✍️",
-};
-
 export default function HistoryPage() {
-  const [allLogs, setAllLogs] = useState<any[]>([]);
+  const [allLogs, setAllLogs] = useState<StudyLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
-  const userId = "daughter_01";
+  const userId = STUDY_USER_ID;
 
   useEffect(() => {
     async function loadHistory() {
@@ -96,7 +88,7 @@ export default function HistoryPage() {
                   <div className="log-info">
                     {/* アイコンを表示するように修正 */}
                     <div className="subject-name">
-                      {SUBJECT_ICONS[log.subject] || "📝"} {log.subject}
+                      {STUDY_SUBJECT_ICONS[log.subject] || "📝"} {log.subject}
                     </div>
                     <div className="duration-text">{log.duration}分間 冒険した！</div>
                   </div>

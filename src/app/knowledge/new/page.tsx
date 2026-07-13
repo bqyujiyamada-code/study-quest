@@ -2,12 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { generateKnowledgeCard, SubjectType } from "@/app/actions/knowledge-generator";
+import { generateKnowledgeCard } from "@/app/actions/knowledge-generator";
 import { saveKnowledgeCard } from "@/app/actions/knowledge";
+import { type SubjectType, KNOWLEDGE_SUBJECTS } from "@/lib/subjects";
+import { KNOWLEDGE_USER_ID } from "@/lib/user";
 
 export default function NewKnowledgePage() {
   const router = useRouter();
-  const [userId] = useState("user_01");
+  const [userId] = useState(KNOWLEDGE_USER_ID);
   const [subject, setSubject] = useState<SubjectType>("math");
   const [title, setTitle] = useState("");
   const [example, setExample] = useState("");
@@ -62,8 +64,8 @@ export default function NewKnowledgePage() {
       } else {
         throw new Error(saveResult.error || "データベースへの保存に失敗しました。");
       }
-    } catch (error: any) {
-      alert(error.message || "エラーが発生しました。");
+    } catch (error) {
+      alert((error as Error).message || "エラーが発生しました。");
     } finally {
       setIsLoading(false);
       setStatusMessage("");
@@ -78,10 +80,9 @@ export default function NewKnowledgePage() {
         <div>
           <label style={{ display: "block", fontWeight: "bold", marginBottom: "4px", fontSize: "0.9rem" }}>教科</label>
           <select value={subject} onChange={(e) => setSubject(e.target.value as SubjectType)} style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #cbd5e1" }}>
-            <option value="math">📐 算数</option>
-            <option value="japanese">📖 国語</option>
-            <option value="science">🧪 理科</option>
-            <option value="society">🌍 社会</option>
+            {KNOWLEDGE_SUBJECTS.map((s) => (
+              <option key={s.id} value={s.id}>{s.emoji} {s.label}</option>
+            ))}
           </select>
         </div>
 

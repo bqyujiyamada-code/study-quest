@@ -2,25 +2,17 @@
 
 import { useEffect, useState } from "react";
 import { getUnpaidLogs, executeSettlement, getAllStudyLogs } from "@/app/actions/study";
-
-// 科目ごとのバッジカラー設定（英語を追加）
-const SUBJECT_COLORS: { [key: string]: string } = {
-  "算数": "#4CC9F0", // 空色
-  "国語": "#FF4D6D", // ピンク
-  "理科": "#00C951", // 緑
-  "社会": "#FB8500", // オレンジ
-  "英語": "#7209B7", // 紫（英語用に追加！）
-  "論理": "#4361EE", // 青
-  "作文": "#4895EF", // 水色
-};
+import { STUDY_SUBJECT_COLORS } from "@/lib/subjects";
+import { STUDY_USER_ID } from "@/lib/user";
+import type { StudyLog } from "@/lib/types";
 
 export default function AdminPage() {
-  const [unpaidLogs, setUnpaidLogs] = useState<any[]>([]);
-  const [allLogs, setAllLogs] = useState<any[]>([]);
+  const [unpaidLogs, setUnpaidLogs] = useState<StudyLog[]>([]);
+  const [allLogs, setAllLogs] = useState<StudyLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
-  const userId = "daughter_01";
+  const userId = STUDY_USER_ID;
 
   const fetchData = async () => {
     setLoading(true);
@@ -118,17 +110,17 @@ export default function AdminPage() {
               <div className="empty-state">この月の記録はありません</div>
             ) : (
               filteredLogs.map((log) => (
-                <div key={log.timestamp} className={`log-card ${!log.unpaid ? 'settled' : ''}`}>
+                <div key={log.timestamp} className={`log-card ${log.status === "paid" ? 'settled' : ''}`}>
                   <div className="log-header">
                     <div className="header-left">
                       {/* 背景色を科目ごとに動的に変更 */}
                       <div 
                         className="subject-badge" 
-                        style={{ backgroundColor: SUBJECT_COLORS[log.subject] || "#4CC9F0" }}
+                        style={{ backgroundColor: STUDY_SUBJECT_COLORS[log.subject] || "#4CC9F0" }}
                       >
                         {log.subject}
                       </div>
-                      {!log.unpaid && <span className="settled-badge">精算済</span>}
+                      {log.status === "paid" && <span className="settled-badge">精算済</span>}
                     </div>
                     <div className="log-date">
                       {new Date(log.timestamp).toLocaleString("ja-JP", {

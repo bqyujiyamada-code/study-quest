@@ -1,55 +1,28 @@
 "use server";
 
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { 
-  DynamoDBDocumentClient, 
-  GetCommand, 
-  PutCommand, 
-  ScanCommand,
-  QueryCommand 
-} from "@aws-sdk/lib-dynamodb";
-
-const client = new DynamoDBClient({
-  region: "ap-northeast-1",
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID || "",
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "",
-  },
-});
-
-const docClient = DynamoDBDocumentClient.from(client);
-
-/**
- * レベルに応じた単価を計算する（0.4円〜0.6円）
- * 100分ごとに1レベル上がる計算（450分でLv.10前後）
- */
-const getUnitPrice = (totalMinutes: number) => {
-  const level = Math.floor(totalMinutes / 100) + 1;
-  const currentLevel = level > 10 ? 10 : level;
-
-  if (currentLevel <= 3) return 0.4; // Lv1-3
-  if (currentLevel <= 7) return 0.5; // Lv4-7
-  return 0.6; // Lv8-10
-};
+import { GetCommand, PutCommand, ScanCommand, QueryCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
+import { db as docClient } from "@/lib/db";
+import { getUnitPrice } from "@/lib/levels";
+import type { StudyLog, UserStats } from "@/lib/types";
 
 /**
  * ユーザーの現在のステータスを取得
  */
-export async function getUserStats(userId: string) {
+export async function getUserStats(userId: string): Promise<UserStats> {
   try {
     const command = new GetCommand({
       TableName: "UserStats",
       Key: { userId },
     });
     const response = await docClient.send(command);
-    
-    return response.Item || { 
+
+    return (response.Item as UserStats | undefined) || {
       userId,
-      totalMinutes: 0, 
-      totalPoints: 0, 
-      totalMoney: 0, 
+      totalMinutes: 0,
+      totalPoints: 0,
+      totalMoney: 0,
       combo: 0,
-      lastDate: "" 
+      lastDate: ""
     };
   } catch (error) {
     console.error("DynamoDB Get Error:", error);
@@ -179,17 +152,24 @@ export async function saveStudyLog(data: {
 /**
  * 未精算の勉強ログをすべて取得する
  */
-export async function getUnpaidLogs(userId: string) {
+export async function getUnpaidLogs(userId: string): Promise<StudyLog[]> {
   try {
-    const command = new ScanCommand({
-      TableName: "StudyQuestLogs",
-      FilterExpression: "userId = :uid AND #st = :status",
-      ExpressionAttributeNames: { "#st": "status" },
-      ExpressionAttributeValues: { ":uid": userId, ":status": "unpaid" }
-    });
-    
-    const response = await docClient.send(command);
-    return response.Items || [];
+    const items: StudyLog[] = [];
+    let ExclusiveStartKey: Record<string, unknown> | undefined;
+
+    do {
+      const response = await docClient.send(new ScanCommand({
+        TableName: "StudyQuestLogs",
+        FilterExpression: "userId = :uid AND #st = :status",
+        ExpressionAttributeNames: { "#st": "status" },
+        ExpressionAttributeValues: { ":uid": userId, ":status": "unpaid" },
+        ExclusiveStartKey,
+      }));
+      items.push(...((response.Items as StudyLog[] | undefined) ?? []));
+      ExclusiveStartKey = response.LastEvaluatedKey;
+    } while (ExclusiveStartKey);
+
+    return items;
   } catch (error) {
     console.error("Get Unpaid Logs Error:", error);
     return [];
@@ -199,17 +179,24 @@ export async function getUnpaidLogs(userId: string) {
 /**
  * すべての勉強ログ（履歴用）を取得する
  */
-export async function getAllStudyLogs(userId: string) {
+export async function getAllStudyLogs(userId: string): Promise<StudyLog[]> {
   try {
-    const command = new QueryCommand({
-      TableName: "StudyQuestLogs",
-      KeyConditionExpression: "userId = :uid",
-      ExpressionAttributeValues: { ":uid": userId },
-      ScanIndexForward: false // 降順（新しい順）で取得
-    });
-    
-    const response = await docClient.send(command);
-    return response.Items || [];
+    const items: StudyLog[] = [];
+    let ExclusiveStartKey: Record<string, unknown> | undefined;
+
+    do {
+      const response = await docClient.send(new QueryCommand({
+        TableName: "StudyQuestLogs",
+        KeyConditionExpression: "userId = :uid",
+        ExpressionAttributeValues: { ":uid": userId },
+        ScanIndexForward: false, // 降順（新しい順）で取得
+        ExclusiveStartKey,
+      }));
+      items.push(...((response.Items as StudyLog[] | undefined) ?? []));
+      ExclusiveStartKey = response.LastEvaluatedKey;
+    } while (ExclusiveStartKey);
+
+    return items;
   } catch (error) {
     console.error("Get All Logs Error:", error);
     return [];
@@ -219,29 +206,27 @@ export async function getAllStudyLogs(userId: string) {
 /**
  * 精算を実行
  */
-export async function executeSettlement(userId: string, unpaidLogs: any[]) {
+export async function executeSettlement(userId: string, unpaidLogs: StudyLog[]) {
   try {
-    // 1. 各ログのステータスをpaidに更新
+    // 1. 各ログのステータスをpaidに更新（対象フィールドのみ。丸ごとPutし直すと
+    //    Scan取得後に他で更新された値を巻き戻すリスクがあるため）
+    const paidAt = new Date().toISOString();
     for (const log of unpaidLogs) {
-      await docClient.send(new PutCommand({
+      await docClient.send(new UpdateCommand({
         TableName: "StudyQuestLogs",
-        Item: {
-          ...log,
-          status: "paid",
-          paidAt: new Date().toISOString()
-        }
+        Key: { userId: log.userId, timestamp: log.timestamp },
+        UpdateExpression: "set #st = :paid, paidAt = :paidAt",
+        ExpressionAttributeNames: { "#st": "status" },
+        ExpressionAttributeValues: { ":paid": "paid", ":paidAt": paidAt },
       }));
     }
 
     // 2. 累計ステータスのお小遣い(totalMoney)を0にリセット
-    const currentStats = await getUserStats(userId);
-    await docClient.send(new PutCommand({
+    await docClient.send(new UpdateCommand({
       TableName: "UserStats",
-      Item: {
-        ...currentStats,
-        totalMoney: 0,  
-        lastSettledAt: new Date().toISOString()
-      }
+      Key: { userId },
+      UpdateExpression: "set totalMoney = :zero, lastSettledAt = :now",
+      ExpressionAttributeValues: { ":zero": 0, ":now": paidAt },
     }));
 
     return { success: true };

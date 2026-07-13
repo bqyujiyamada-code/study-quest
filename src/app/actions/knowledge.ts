@@ -1,16 +1,11 @@
 "use server";
 
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, PutCommand, QueryCommand, DeleteCommand, GetCommand } from "@aws-sdk/lib-dynamodb";
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
-
-// AWS クライアントの初期化
-const ddbClient = new DynamoDBClient({ region: "ap-northeast-1" });
-const docClient = DynamoDBDocumentClient.from(ddbClient);
-const s3Client = new S3Client({ region: "ap-northeast-1" });
+import { PutCommand, QueryCommand, DeleteCommand, GetCommand } from "@aws-sdk/lib-dynamodb";
+import { PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import { db as docClient } from "@/lib/db";
+import { s3 as s3Client, S3_BUCKET_NAME as BUCKET_NAME, CLOUDFRONT_DOMAIN } from "@/lib/s3";
 
 const TABLE_NAME = "study_quest-knowledge";
-const BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME || "study-quest-assets";
 
 /**
  * ナレッジカードを新規保存する（画像はS3、データはDynamoDB）
@@ -47,15 +42,15 @@ export async function saveKnowledgeCard(formData: FormData) {
           ContentType: imageFile.type,
         })
       );
-      imageUrl = `https://d3nkmrk6hg66h7.cloudfront.net/${s3Key}`;
+      imageUrl = `https://${CLOUDFRONT_DOMAIN}/${s3Key}`;
     }
 
     // 2. 圧縮データ対策
-    let finalContent: any = contentData;
+    let finalContent: string | Record<string, unknown> = contentData;
     if (contentData.trim().startsWith("{")) {
       try {
         finalContent = JSON.parse(contentData);
-      } catch (e) {
+      } catch {
         console.warn("JSONのパースに失敗したため、文字列のまま保存します。");
       }
     }
@@ -80,9 +75,9 @@ export async function saveKnowledgeCard(formData: FormData) {
     );
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error) {
     console.error("SAVE_KNOWLEDGE_CARD_FAILURE:", error);
-    return { success: false, error: error.message || "データベースへの保存に失敗しちゃった。" };
+    return { success: false, error: (error as Error).message || "データベースへの保存に失敗しちゃった。" };
   }
 }
 
@@ -95,7 +90,12 @@ export async function getKnowledgeCards(userId: string, subjectTag?: string) {
       return { success: false, error: "ユーザーIDが指定されていないよ。" };
     }
 
-    let queryParams: any = {
+    const queryParams: {
+      TableName: string;
+      KeyConditionExpression: string;
+      ExpressionAttributeValues: Record<string, string>;
+      FilterExpression?: string;
+    } = {
       TableName: TABLE_NAME,
       KeyConditionExpression: "userId = :uid",
       ExpressionAttributeValues: {
@@ -116,9 +116,9 @@ export async function getKnowledgeCards(userId: string, subjectTag?: string) {
     );
 
     return { success: true, items: sortedItems };
-  } catch (error: any) {
+  } catch (error) {
     console.error("GET_KNOWLEDGE_CARDS_FAILURE:", error);
-    return { success: false, error: error.message || "データの取得に失敗しちゃった。" };
+    return { success: false, error: (error as Error).message || "データの取得に失敗しちゃった。" };
   }
 }
 
@@ -147,18 +147,17 @@ export async function deleteKnowledgeCard(userId: string, cardId: string) {
     // 2. S3の画像URLがある場合、S3からアセットを完全削除
     if (targetItem.imageUrl) {
       try {
-        const urlParts = targetItem.imageUrl.split(".amazonaws.com/");
-        if (urlParts.length === 2) {
-          const s3Key = urlParts[1];
+        // imageUrlはCloudFront経由のURL（https://<domain>/<s3Key>）なので、
+        // パス部分（先頭の "/" を除いたもの）がそのままS3のKeyになる
+        const s3Key = new URL(targetItem.imageUrl).pathname.replace(/^\//, "");
 
-          await s3Client.send(
-            new DeleteObjectCommand({
-              Bucket: BUCKET_NAME,
-              Key: s3Key,
-            })
-          );
-          console.log(`S3の画像を削除しました: ${s3Key}`);
-        }
+        await s3Client.send(
+          new DeleteObjectCommand({
+            Bucket: BUCKET_NAME,
+            Key: s3Key,
+          })
+        );
+        console.log(`S3の画像を削除しました: ${s3Key}`);
       } catch (s3Error) {
         console.error("S3_IMAGE_DELETE_FAILURE (Non-blocking):", s3Error);
       }
@@ -174,8 +173,8 @@ export async function deleteKnowledgeCard(userId: string, cardId: string) {
 
     console.log(`DynamoDBからカードを削除しました: ${cardId}`);
     return { success: true };
-  } catch (error: any) {
+  } catch (error) {
     console.error("DELETE_KNOWLEDGE_CARD_FAILURE:", error);
-    return { success: false, error: error.message || "カードの削除に失敗しちゃいました。" };
+    return { success: false, error: (error as Error).message || "カードの削除に失敗しちゃいました。" };
   }
 }

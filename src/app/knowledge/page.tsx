@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { getKnowledgeCards, deleteKnowledgeCard } from "@/app/actions/knowledge";
-import { SubjectType } from "@/app/actions/knowledge-generator";
+import { type SubjectType, KNOWLEDGE_SUBJECTS, getKnowledgeSubjectLabel } from "@/lib/subjects";
+import { KNOWLEDGE_USER_ID } from "@/lib/user";
+import type { KnowledgeCardContent } from "@/lib/types";
 import pako from "pako";
 
 type CardItem = {
@@ -14,11 +16,15 @@ type CardItem = {
   intro: string;
   imageUrl?: string;
   createdAt: string;
-  content: any; 
+  content: KnowledgeCardContent | null;
 };
 
+// DynamoDBから届いた直後は、圧縮されたBase64文字列 or 生JSONのどちらかで、
+// まだgetDecompressedContentを通っていない状態
+type RawCardItem = Omit<CardItem, "content"> & { content: string | Record<string, unknown> };
+
 export default function KnowledgeListPage() {
-  const [userId] = useState("user_01");
+  const [userId] = useState(KNOWLEDGE_USER_ID);
   const [cards, setCards] = useState<CardItem[]>([]);
   const [selectedSubject, setSelectedSubject] = useState<SubjectType | "all">("all");
   const [isLoading, setIsLoading] = useState(true);
@@ -29,7 +35,7 @@ export default function KnowledgeListPage() {
   /**
    * 圧縮されたBase64文字列データを、ブラウザ側で元のJSONオブジェクトに解凍する
    */
-  const getDecompressedContent = (card: CardItem) => {
+  const getDecompressedContent = (card: RawCardItem): KnowledgeCardContent | null => {
     if (typeof card.content === "string") {
       try {
         const binaryString = atob(card.content);
@@ -45,14 +51,14 @@ export default function KnowledgeListPage() {
         return null;
       }
     }
-    return card.content;
+    return card.content as KnowledgeCardContent;
   };
 
   const fetchCards = async (subjectTag?: SubjectType) => {
     setIsLoading(true);
     const result = await getKnowledgeCards(userId, subjectTag);
     if (result.success) {
-      const decompressedItems = (result.items as CardItem[]).map(item => ({
+      const decompressedItems = (result.items as RawCardItem[]).map(item => ({
         ...item,
         content: getDecompressedContent(item)
       }));
@@ -113,15 +119,6 @@ export default function KnowledgeListPage() {
     );
   });
 
-  const getSubjectLabel = (sub: SubjectType) => {
-    switch (sub) {
-      case "math": return "📐 算数";
-      case "japanese": return "📖 国語";
-      case "science": return "🧪 理科";
-      case "society": return "🌍 社会";
-    }
-  };
-
   return (
     <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "16px", boxSizing: "border-box", fontFamily: "sans-serif" }}>
       
@@ -152,12 +149,9 @@ export default function KnowledgeListPage() {
           <button onClick={() => setSelectedSubject("all")} style={{ padding: "8px 16px", borderRadius: "20px", border: "1px solid #cbd5e1", cursor: "pointer", fontSize: "0.85rem", backgroundColor: selectedSubject === "all" ? "#1e4ed8" : "#fff", color: selectedSubject === "all" ? "#fff" : "#475569", fontWeight: selectedSubject === "all" ? "bold" : "normal" }}>
             すべて
           </button>
-          {(["math", "japanese", "science", "society"] as const).map((sub) => (
-            <button key={sub} onClick={() => setSelectedSubject(sub)} style={{ padding: "8px 16px", borderRadius: "20px", border: "1px solid #cbd5e1", cursor: "pointer", fontSize: "0.85rem", backgroundColor: selectedSubject === sub ? "#1e4ed8" : "#fff", color: selectedSubject === sub ? "#fff" : "#475569", fontWeight: selectedSubject === sub ? "bold" : "normal" }}>
-              {sub === "math" && "算数"}
-              {sub === "japanese" && "国語"}
-              {sub === "science" && "理科"}
-              {sub === "society" && "社会"}
+          {KNOWLEDGE_SUBJECTS.map((s) => (
+            <button key={s.id} onClick={() => setSelectedSubject(s.id)} style={{ padding: "8px 16px", borderRadius: "20px", border: "1px solid #cbd5e1", cursor: "pointer", fontSize: "0.85rem", backgroundColor: selectedSubject === s.id ? "#1e4ed8" : "#fff", color: selectedSubject === s.id ? "#fff" : "#475569", fontWeight: selectedSubject === s.id ? "bold" : "normal" }}>
+              {s.label}
             </button>
           ))}
         </div>
@@ -183,7 +177,7 @@ export default function KnowledgeListPage() {
               )}
 
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.75rem", color: "#64748b", marginBottom: "4px" }}>
-                <span>{getSubjectLabel(card.subject)}</span>
+                <span>{getKnowledgeSubjectLabel(card.subject)}</span>
                 <span style={{ color: "#d97706", fontWeight: "bold" }}>{card.content?.degreeOfAppearance || "---"}</span>
               </div>
 
@@ -213,7 +207,7 @@ export default function KnowledgeListPage() {
 
             <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", alignItems: "center", marginBottom: "12px", marginTop: "12px" }}>
               <span style={{ backgroundColor: "#eff6ff", color: "#1d4ed8", fontSize: "0.75rem", fontWeight: "bold", padding: "4px 10px", borderRadius: "6px" }}>
-                {getSubjectLabel(selectedCard.subject)}
+                {getKnowledgeSubjectLabel(selectedCard.subject)}
               </span>
               <span style={{ backgroundColor: "#fef3c7", color: "#d97706", fontSize: "0.75rem", fontWeight: "bold", padding: "4px 10px", borderRadius: "6px" }}>
                 よく出る度: {selectedCard.content.degreeOfAppearance || "---"}

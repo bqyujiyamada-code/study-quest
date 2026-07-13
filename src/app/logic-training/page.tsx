@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { generateLogicLesson, TrainingMode } from "../actions/logic-training";
+import type { LogicLesson } from "@/lib/types";
 
 const globalStyles = `
   @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
@@ -13,7 +14,7 @@ export default function LogicTrainingPage() {
   const [scene, setScene] = useState<"SELECT" | "INPUT" | "RESULT">("SELECT");
   const [mode, setMode] = useState<TrainingMode>("causality");
   const [theme, setTheme] = useState("");
-  const [lesson, setLesson] = useState<any>(null);
+  const [lesson, setLesson] = useState<LogicLesson | null>(null);
   const [loading, setLoading] = useState(false);
 
   const themes = {
@@ -109,7 +110,7 @@ export default function LogicTrainingPage() {
 
           {mode === "pros-cons" && (
             <div style={gridStyle}>
-              {lesson.clash_points.map((p: any, i: number) => (
+              {lesson.clash_points!.map((p, i) => (
                 <div key={i} className="quest-card" style={clashCard}>
                   <div style={clashTitle}>🥊 攻防の視点：{p.point_title}</div>
                   <div style={clashBox}><span style={tagPros}>賛成</span> {p.pros_view}</div>
@@ -120,7 +121,7 @@ export default function LogicTrainingPage() {
           )}
 
           <div style={gridStyle}>
-            {(lesson.essays || lesson.reasons).map((item: any, i: number) => (
+            {(lesson.essays || lesson.reasons)!.map((item, i) => (
               <article key={i} className="quest-card" style={{ ...essayCard, borderColor: current.dark }}>
                 <div style={{ ...essayTag, backgroundColor: current.bg, color: current.dark }}>
                   {mode === "causality" ? `📜 呪文 ${i+1}` : `🔥 演武：${item.side || item.reason_title}`}

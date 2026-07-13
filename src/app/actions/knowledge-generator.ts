@@ -2,10 +2,9 @@
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import pako from "pako";
+import { type SubjectType, getKnowledgeSubjectLabel } from "@/lib/subjects";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-
-export type SubjectType = "math" | "japanese" | "science" | "society";
 
 /**
  * 教科に応じた「ロジックの分岐点」の指示を取得
@@ -36,14 +35,7 @@ export async function generateKnowledgeCard(payload: {
 }) {
   const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
 
-  const subjectNames: Record<SubjectType, string> = {
-    math: "算数",
-    japanese: "国語",
-    science: "理科",
-                society: "社会"
-  };
-
-  const subjectName = subjectNames[payload.subject];
+  const subjectName = getKnowledgeSubjectLabel(payload.subject, false);
   const logicInstruction = getLogicInstruction(payload.subject);
 
   const prompt = `# あなたの役割
@@ -116,7 +108,7 @@ export async function generateKnowledgeCard(payload: {
       intro: parsedData.intro || "",
       compressedContent: compressedBase64 
     };
-  } catch (error: any) {
+  } catch (error) {
     console.error("KNOWLEDGE_GENERATION_FAILURE:", error);
     return { success: false, error: "AI先生がちょっと考え込んじゃったみたい。もう一度問題を投げてみてね！" };
   }

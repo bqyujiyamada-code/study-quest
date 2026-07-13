@@ -1,12 +1,16 @@
 "use server";
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import type { LogicLesson } from "@/lib/types";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 export type TrainingMode = "causality" | "contrast" | "pros-cons";
 
-export async function generateLogicLesson(theme: string, mode: TrainingMode = "causality") {
+export async function generateLogicLesson(
+  theme: string,
+  mode: TrainingMode = "causality"
+): Promise<{ success: true; data: LogicLesson } | { success: false; error: string }> {
   const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
 
   let prompt = "";
@@ -63,8 +67,8 @@ export async function generateLogicLesson(theme: string, mode: TrainingMode = "c
       text = text.substring(firstBrace, lastBrace + 1);
     }
 
-    return { success: true, data: JSON.parse(text) };
-  } catch (error: any) {
+    return { success: true, data: JSON.parse(text) as LogicLesson };
+  } catch (error) {
     console.error("LOGIC_LESSON_FAILURE:", error);
     return { success: false, error: "通信エラーが発生したよ。もう一度修行してみよう！" };
   }
